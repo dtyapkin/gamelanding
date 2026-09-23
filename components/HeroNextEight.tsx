@@ -14,7 +14,7 @@ export default function HeroNextEight() {
             <img
               src="/p-18.jpg"
               alt="Game Showcase"
-              className="w-full object-cover rounded-2xl"
+              className="w-full object-center rounded-2xl"
             />
             {/* <div className="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-[60%] z-0">
               <div className="w-56 h-36 lg:w-64 lg:h-40 bg-gradient-to-br from-gray-900 to-black rounded-2xl shadow-2xl transform -rotate-12 border border-white/10 p-5">
