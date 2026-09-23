@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Цвета */
+  --color-bg-primary: #1b1b25;
+  --color-bg-secondary: #180533;
+  --color-bg-card: #1a1a25;
+  --color-bg-glass: rgba(26, 26, 37, 0.7);
+  --color-accent-primary: #00ff88;
+  --color-accent-secondary: #00d4ff;
+  --color-accent-purple: #8b5cf6;
+  --color-border: rgba(255, 255, 255, 0.1);
+
+  /* Шрифты */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Градиенты и фоны */
+  --background-image-gradient-primary: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+  --background-image-gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #00ff88 100%);
+  --background-image-gradient-card: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+  
+  /* Тени */
+  --shadow-glow: 0 0 40px rgba(0, 255, 136, 0.15);
+  --shadow-glow-strong: 0 0 60px rgba(0, 255, 136, 0.3);
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.4);
+
+  /* Анимации */
+  --animate-fade-in-up: fade-in-up 0.6s ease-out;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.6); }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@layer base {
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body { @apply bg-bg-primary text-white font-sans antialiased overflow-x-hidden; }
+  ::selection { @apply bg-accent-primary/30 text-white; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .gradient-text { @apply bg-gradient-to-br from-accent-primary to-accent-secondary bg-clip-text text-transparent; }
+  .glass-card { @apply bg-bg-glass backdrop-blur-xl border border-border rounded-2xl; }
+  .btn-primary { @apply inline-flex items-center justify-center px-8 py-4 bg-gradient-primary text-bg-primary font-bold rounded-xl shadow-glow transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow-strong whitespace-nowrap; }
+  .section-title { @apply text-4xl md:text-5xl lg:text-6xl font-extrabold text-center leading-tight; }
+  .section-subtitle { @apply text-lg md:text-xl text-gray-400 text-center max-w-2xl mx-auto; }
 }
