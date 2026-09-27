@@ -44,7 +44,7 @@ export default function LearnSection() {
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
             Пока есть миллионы любителей игр -
-            <span className="text-purple-500">Зарабатывайте с Yandex</span>
+            <span className="text-purple-400">Зарабатывайте с Yandex</span>
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">

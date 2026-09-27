@@ -33,7 +33,7 @@ export default function LearnSectionTwo() {
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
             Почему именно
-            <span className="text-purple-500"> игры и реклама?</span>
+            <span className="text-purple-400"> игры и реклама?</span>
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">

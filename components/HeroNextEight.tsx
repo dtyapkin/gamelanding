@@ -77,7 +77,7 @@ export default function HeroNextEight() {
           <div className="space-y-8">
             <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
               Как работает{" "}
-              <span className="text-purple-500">игровая витрина</span>
+              <span className="text-purple-400">игровая витрина</span>
             </h1>
             <p className="text-gray-400 text-lg leading-relaxed max-w-lg">
               Простая цепочка для заработка.

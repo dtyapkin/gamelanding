@@ -34,7 +34,7 @@ export default function HeroNextFourteenNew() {
             </div>
             <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight tracking-tight">
               Запусти и зарабатывай <br />
-              <span className="text-purple-500">с первого дня.</span>
+              <span className="text-purple-400">с первого дня.</span>
             </h1>
             <p className="text-slate-400 text-base leading-relaxed">
               Все лучшие игры. Игровой каталог, который всегда под рукой.

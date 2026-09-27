@@ -43,7 +43,7 @@ export default function Pricing() {
         <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight tracking-tight">
           Выберите -<br />
           <span className="relative inline-block">
-            <span className="text-purple-500">подходящий вариант</span>
+            <span className="text-purple-400">подходящий вариант</span>
           </span>
         </h2>
         <p className="section-subtitle mb-16 mt-8">

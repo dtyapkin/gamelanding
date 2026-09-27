@@ -29,7 +29,7 @@ export default function HeroNext() {
             <h1 className="text-4xl lg:text-5xl xl:text-7xl font-bold text-white leading-[1.1]">
               Готовая игровая витрина
               <br />
-              <span className="text-purple-500"> для заработка на рекламе</span>
+              <span className="text-purple-400"> для заработка на рекламе</span>
             </h1>
 
             <p className="text-lg text-gray-400 max-w-xl leading-relaxed">
