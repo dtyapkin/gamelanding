@@ -23,7 +23,14 @@ export default function Header() {
             className="flex items-center gap-3 text-2xl font-bold shrink-0"
           >
             <span className="text-3xl">🎮</span>
-            <span className="hidden sm:inline">Online Game</span>
+            <span className="text-lg font-bold text-white">
+              Online
+              <span className="text-primary-light">
+                {" "}
+                <span className="text-purple-500">Game</span>
+              </span>
+            </span>
+            {/* <span className="hidden sm:inline">Online Game</span> */}
           </a>
 
           <ul className="hidden lg:flex items-center gap-8 list-none m-0 p-0">

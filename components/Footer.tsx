@@ -6,7 +6,13 @@ export default function Footer() {
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 text-2xl font-bold mb-4">
               <span>🎮</span>
-              <span>Game Online</span>
+              <span className="text-lg font-bold text-white">
+                Online
+                <span className="text-primary-light">
+                  {" "}
+                  <span className="text-purple-500">Game</span>
+                </span>
+              </span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
               Игровая витрина для создания и развития собственного проекта.

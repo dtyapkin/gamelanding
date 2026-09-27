@@ -5,7 +5,7 @@ export default function PricingComparison() {
         {/* Заголовок */}
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">
-            Сравнение<span className="text-[#8b5cf6]">тарифов</span>
+            Сравнение <span className="text-purple-500"> тарифов</span>
           </h2>
         </div>
 

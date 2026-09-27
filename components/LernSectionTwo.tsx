@@ -1,41 +1,30 @@
-export default function LearnSection() {
+export default function LearnSectionTwo() {
   const cards = [
     {
-      title: "Каталог игр",
-      desc: "Готовая витрина с карточками популярных игр и удобной навигацией.",
+      title: "Большой объём аудитории",
+      desc: "Игровой контент понятен пользователям практически любого возраста.",
       badge: "1 МЛН₽",
-      image: "/r-1.jpg",
+      image: "/r-6.jpg",
     },
     {
-      title: "Переход в игру",
-      desc: "Пользователь нажимает на карточку и переходит к игре на Яндекс Играх.",
+      title: "Новые игры постоянно",
+      desc: "Каталог можно регулярно обновлять и расширять.",
       badge: null,
-      image: "/r-2.jpg",
+      image: "/r-7.jpg",
     },
+
     {
-      title: "Быстрый запуск",
-      desc: "Не нужно разрабатывать сайт с нуля — всё уже готово к использованию.",
-      badge: null,
-      image: "/r-5.jpg",
-    },
-    {
-      title: "Рекламные места",
-      desc: "На сайте предусмотрены места, где можно размещать рекламные блоки.",
+      title: "Взаимодействие с сайтом",
+      desc: "Это не обычная информационная страница, которую человек быстро закрывает.",
       badge: "ЗАБЕРИ МОИ ДЕНЬГИ УЖЕ",
-      image: "/r-3.jpg",
+      image: "/r-8.jpg",
     },
     {
-      title: "Адаптивный дизайн",
-      desc: "Корректно отображается на компьютерах, планшетах и смартфонах.",
+      title: "Развитие проекта",
+      desc: "Начать с небольшой витрины, а затем добавлять категории, SEO-страницы, контент и рекламные места.",
       badge: null,
-      image: "/r-4.jpg",
+      image: "/r-9.jpg",
     },
-    // {
-    //   title: "Масштабирование и автоматизация бизнеса",
-    //   desc: "Как превратить один сайт в сеть игровых порталов, выстроить систему пассивного дохода и сделать проект полноценным цифровым активом",
-    //   badge: null,
-    //   image: "/r-5.jpg",
-    // },
   ];
 
   return (
@@ -43,11 +32,11 @@ export default function LearnSection() {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
-            Пока есть миллионы любителей игр -
-            <span className="text-purple-500">Зарабатывайте с Yandex</span>
+            Почему именно
+            <span className="text-purple-500"> игры и реклама?</span>
           </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {cards.map((card, i) => (
             <div
               key={i}

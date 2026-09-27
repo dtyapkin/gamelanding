@@ -34,7 +34,7 @@ export default function FAQ() {
     <section id="faq" className="py-20 lg:py-32 bg-bg-secondary">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="flex justify-center text-4xl lg:text-5xl xl:text-6xl font-bold mb-16">
-          Частые<span className="text-accent-purple ml-6">вопросы</span>
+          Частые<span className="text-purple-500 ml-6">вопросы</span>
         </h2>
         <div className="space-y-4">
           {faqs.map((f, i) => (

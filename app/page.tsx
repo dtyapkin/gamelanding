@@ -13,7 +13,8 @@ import HeroNextThirteenTwo from "@/components/HeroNextThirteenTwo";
 import HeroNextTwelveNew from "@/components/HeroNextTwelveNew";
 // import HeroNextTwentyOneNew from "@/components/HeroNextTwentyOneNew";
 // import HowItMade from "@/components/HowItMade";
-// import LearnSection from "@/components/LearnSection";
+import LearnSection from "@/components/LearnSection";
+import LearnSectionTwo from "@/components/LernSectionTwo";
 import Pricing from "@/components/Pricing";
 // import Warranty from "@/components/Warranty";
 import WhatIncludedNew from "@/components/WhatIncludedNew";
@@ -24,17 +25,19 @@ export default function Home() {
       <Header />
       <main>
         <HeroNext />
-        <HeroNextThirteenTwo />
-        {/* <HeroNextThirteen /> */}
+        <LearnSection />
+        {/* <HeroNextThirteenTwo /> */}
         <HeroNextEight />
         <HeroNextFourteenNew />
         <HeroBanner />
-        <HeroNextThirteen />
+        {/* <HeroNextThirteen /> */}
+        <LearnSectionTwo />
         {/* <HeroNextFifteen /> */}
         <HeroNextTwelveNew />
-        {/* <HowItMade />
-        <LearnSection /> 
+        {/* <HowItMade /> */}
+        {/* <LearnSection />  */}
         {/* <HeroNextTwentyOneNew /> */}
+
         <Pricing />
         <CompareTwo />
         <WhatIncludedNew />

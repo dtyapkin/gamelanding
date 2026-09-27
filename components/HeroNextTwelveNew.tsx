@@ -46,17 +46,17 @@ export default function HeroNextTwelveNew() {
 
           <div className="relative h-[600px] lg:h-[700px]">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
-              <div className="relative rounded-[3rem] overflow-hidden shadow-2xl">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-300 via-teal-300 to-cyan-400" />
+              <div className="relative rounded-[2rem] overflow-hidden shadow-2xl">
+                {/* <div className="absolute inset-0 bg-gradient-to-br from-emerald-300 via-teal-300 to-cyan-400" /> */}
                 <img
-                  src="/p-20.jpg"
+                  src="/t-2.jpg"
                   alt="Entrepreneur"
                   className="relative w-full h-[500px] lg:h-[600px] object-cover mix-blend-normal"
                 />
               </div>
             </div>
 
-            <div className="absolute top-4 right-0 lg:-right-4 z-20 w-56 lg:w-64">
+            {/* <div className="absolute top-4 right-0 lg:-right-4 z-20 w-56 lg:w-64">
               <div className="bg-purple-500/20 backdrop-blur-xl rounded-3xl p-5 border border-purple-500/30 shadow-2xl shadow-purple-500/20">
                 <div className="text-purple-200 text-xs font-medium mb-2">
                   Еженедельные отчисления
@@ -80,10 +80,10 @@ export default function HeroNextTwelveNew() {
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* <!-- Card 2: Freedom Score (middle right) --> */}
-            <div className="absolute top-1/2 -right-2 lg:-right-8 z-20 w-52 lg:w-60">
+            {/* <div className="absolute top-1/2 -right-2 lg:-right-8 z-20 w-52 lg:w-60">
               <div className="bg-amber-500/10 backdrop-blur-xl rounded-3xl p-5 border border-amber-500/20 shadow-2xl shadow-amber-500/10">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-amber-200 text-xs font-medium">
@@ -113,10 +113,10 @@ export default function HeroNextTwelveNew() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* <!-- Card 3: Latest Sale (bottom) --> */}
-            <div className="absolute bottom-8 left-4 lg:left-0 z-20 w-56 lg:w-64">
+            {/* <div className="absolute bottom-8 left-4 lg:left-0 z-20 w-56 lg:w-64">
               <div className="bg-pink-500/15 backdrop-blur-xl rounded-3xl p-5 border border-pink-500/25 shadow-2xl shadow-pink-500/15">
                 <div className="flex items-center justify-between">
                   <div>
@@ -125,7 +125,7 @@ export default function HeroNextTwelveNew() {
                       Размещение рекламы Яндекс <br />
                       на страницах сайта.
                     </div>
-                    {/* <!-- <div className="text-pink-200/60 text-xs mt-1">2m ago</div> --> */}
+                    
                   </div>
                   <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center">
                     <svg
@@ -143,7 +143,7 @@ export default function HeroNextTwelveNew() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

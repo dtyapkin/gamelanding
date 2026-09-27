@@ -19,7 +19,7 @@ export default function WhatIncludedNew() {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           <div className="space-y-8">
             <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
-              Что входит в покупку
+              Что входит в <span className="text-purple-500"> покупку</span>
             </h1>
             <p className="text-gray-400 text-lg leading-relaxed max-w-lg">
               После оплаты вы получаете:
