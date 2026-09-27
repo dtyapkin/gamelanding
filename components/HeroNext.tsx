@@ -73,7 +73,7 @@ export default function HeroNext() {
             <div className="relative z-10 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-3xl backdrop-blur-sm border border-white/10">
               {/* Путь изменён на /p-1.jpg, так как в Next.js статика лежит в папке public */}
               <img
-                src="/p-000.jpg"
+                src="/t-1.jpg"
                 alt="Game Showcase"
                 className="w-full object-cover rounded-2xl"
               />
