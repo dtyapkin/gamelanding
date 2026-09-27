@@ -43,7 +43,7 @@ export default function Pricing() {
         <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight tracking-tight">
           Выберите -<br />
           <span className="relative inline-block">
-            <span className="text-purple-400">подходящий вариант</span>
+            <span className="text-purple-500">подходящий вариант</span>
           </span>
         </h2>
         <p className="section-subtitle mb-16 mt-8">
@@ -59,8 +59,8 @@ export default function Pricing() {
               <p className="text-gray-400">Для тех, кто хочет попробовать</p>
             </div>
             <div className="text-center mb-8 p-8 rounded-2xl border border-border">
-              <span className="text-3xl font-bold align-top mr-1">₽</span>
-              <span className="text-7xl font-bold text-purple-400">300</span>
+              <span className="text-6xl font-bold text-purple-400">300</span>
+              <span className="text-2xl font-normal align-top mr-1">₽</span>
             </div>
             <ul className="space-y-4 mb-8">
               {startFeatures.map((f, i) => (
@@ -94,14 +94,14 @@ export default function Pricing() {
               🔥 ПОПУЛЯРНЫЙ
             </div>
             <div className="text-center mb-8 mt-4">
-              <h3 className="text-3xl font-bold mb-2">PRO</h3>
+              <h3 className="text-2xl font-bold mb-2">PRO</h3>
               <p className="text-gray-400">
                 Для тех, кто хочет больше возможностей
               </p>
             </div>
             <div className="text-center mb-8 p-8 rounded-2xl border border-accent-purple/30">
-              <span className="text-3xl font-bold align-top mr-1">₽</span>
-              <span className="text-7xl font-bold text-purple-400">900</span>
+              <span className="text-6xl font-bold text-purple-400">900</span>
+              <span className="text-2xl font-normal align-top mr-1">₽</span>
             </div>
             <ul className="space-y-4 mb-8">
               {proFeatures.map((f, i) => (
@@ -138,8 +138,8 @@ export default function Pricing() {
               </p>
             </div>
             <div className="text-center mb-8 p-8 rounded-2xl border border-border">
-              <span className="text-3xl font-bold align-top mr-1">₽</span>
-              <span className="text-7xl font-bold text-purple-400">1900</span>
+              <span className="text-6xl font-bold text-purple-400">1900</span>
+              <span className="text-2xl font-normal align-top mr-1">₽</span>
             </div>
             <ul className="space-y-4 mb-8">
               {vipFeatures.map((f, i) => (
