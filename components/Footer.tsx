@@ -10,7 +10,7 @@ export default function Footer() {
                 Online
                 <span className="text-primary-light">
                   {" "}
-                  <span className="text-purple-500">Game</span>
+                  <span className="text-purple-400">Game</span>
                 </span>
               </span>
             </div>

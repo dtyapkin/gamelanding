@@ -27,7 +27,7 @@ export default function Header() {
               Online
               <span className="text-primary-light">
                 {" "}
-                <span className="text-purple-500">Game</span>
+                <span className="text-purple-400">Game</span>
               </span>
             </span>
             {/* <span className="hidden sm:inline">Online Game</span> */}
