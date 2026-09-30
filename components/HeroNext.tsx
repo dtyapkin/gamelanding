@@ -46,7 +46,8 @@ export default function HeroNext() {
                 Купить за 300 ₽ →
               </a>
               <a
-                href="https://gamedome.ru"
+                href="https://gamedome.ru "
+                target="_blank"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-xl text-white bg-bg-card border border-border hover:bg-bg-card/80 hover:border-white/25 transition-all"
               >
                 Посмотреть сайт
