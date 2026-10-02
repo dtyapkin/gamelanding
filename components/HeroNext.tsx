@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function HeroNext() {
   return (
     <section className="relative bg-slate-950 py-20 lg:py-28 overflow-hidden pt-32 pb-20 lg:pt-44 lg:pb-20">
@@ -52,6 +54,13 @@ export default function HeroNext() {
               >
                 Посмотреть сайт
               </a>
+              {/* <Link
+                href={"/test"}
+                className="text-gray-400 text-xs sm:text-sm hover:text-white hover:translate-x-1 transition-all duration-200 inline-block"
+              >
+                {"test"}
+              </Link> */}
+
               <a
                 href="/test"
                 // target="_blank"

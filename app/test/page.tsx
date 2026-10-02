@@ -1,34 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { login, signup } from "../auth/actions";
 
 export default function LoginPage() {
-  const searchParams = useSearchParams();
-  const errorParam = searchParams.get("error");
-  const messageParam = searchParams.get("message");
-  const emailParam = searchParams.get("email") ?? "";
-
   const [isLogin, setIsLogin] = useState(true);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-        {/* Сообщение об ошибке от Supabase */}
-        {errorParam && (
-          <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-800">
-            <strong>Ошибка:</strong> {decodeURIComponent(errorParam)}
-          </div>
-        )}
-
-        {/* Информационное сообщение (например, «проверьте почту») */}
-        {messageParam && (
-          <div className="mb-4 p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
-            {decodeURIComponent(messageParam)}
-          </div>
-        )}
-
         <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">
           {isLogin ? "Вход" : "Регистрация"}
         </h1>
@@ -48,7 +28,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
-                defaultValue={emailParam}
+                placeholder="you@example.com"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -66,6 +46,7 @@ export default function LoginPage() {
                 type="password"
                 required
                 autoComplete="current-password"
+                placeholder="••••••••"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -92,7 +73,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
-                defaultValue={emailParam}
+                placeholder="you@example.com"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -111,6 +92,7 @@ export default function LoginPage() {
                 required
                 minLength={6}
                 autoComplete="new-password"
+                placeholder="Минимум 6 символов"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
