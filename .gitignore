@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# тестовые архивы, которые создаёт scripts/check-storage.mjs
+.test-files/
 
 # vercel
 .vercel

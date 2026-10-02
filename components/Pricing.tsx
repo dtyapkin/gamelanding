@@ -1,3 +1,8 @@
+import { startCheckout } from "@/app/actions/payment";
+import BuyButton from "@/components/BuyButton";
+import { formatKopecks } from "@/lib/money";
+import { PRODUCTS } from "@/lib/products";
+
 const startFeatures = [
   "Готовую игровую витрину",
   "Каталог игр",
@@ -59,7 +64,9 @@ export default function Pricing() {
               <p className="text-gray-400">Для тех, кто хочет попробовать</p>
             </div>
             <div className="text-center mb-8 p-8 rounded-2xl border border-border">
-              <span className="text-6xl font-bold text-purple-400">300</span>
+              <span className="text-6xl font-bold text-purple-400">
+                {PRODUCTS.start.priceRubles}
+              </span>
               <span className="text-2xl font-normal align-top mr-1">₽</span>
             </div>
             <ul className="space-y-4 mb-8">
@@ -80,12 +87,16 @@ export default function Pricing() {
                 </li>
               ))}
             </ul>
-            <a
-              href="#"
-              className="block w-full text-center py-4 border-2 text-2xl bg-slate-800 border-accent-purple rounded-xl font-normal hover:border-purple-500 hover:bg-accent-purple/10 transition-all"
-            >
-              Купить START
-            </a>
+
+            {/* Форма отправляется на Server Action startCheckout.
+                Браузер передаёт ТОЛЬКО productId — цену сервер берёт сам
+                из каталога (lib/products.ts), поэтому её нельзя подменить. */}
+            <form action={startCheckout}>
+              <input type="hidden" name="productId" value={PRODUCTS.start.id} />
+              <BuyButton variant="outline">
+                Купить {PRODUCTS.start.title} за {formatKopecks(PRODUCTS.start.priceKopecks)}
+              </BuyButton>
+            </form>
           </div>
 
           {/* PRO */}
@@ -100,7 +111,9 @@ export default function Pricing() {
               </p>
             </div>
             <div className="text-center mb-8 p-8 rounded-2xl border border-accent-purple/30">
-              <span className="text-6xl font-bold text-purple-400">900</span>
+              <span className="text-6xl font-bold text-purple-400">
+                {PRODUCTS.pro.priceRubles}
+              </span>
               <span className="text-2xl font-normal align-top mr-1">₽</span>
             </div>
             <ul className="space-y-4 mb-8">
@@ -121,12 +134,12 @@ export default function Pricing() {
                 </li>
               ))}
             </ul>
-            <a
-              href="#"
-              className="block w-full text-center py-4 text-2xl bg-accent-purple text-white rounded-xl font-normal shadow-glow hover:shadow-glow-strong hover:-translate-y-0.5 transition-all"
-            >
-              Купить PRO
-            </a>
+            <form action={startCheckout}>
+              <input type="hidden" name="productId" value={PRODUCTS.pro.id} />
+              <BuyButton variant="solid">
+                Купить {PRODUCTS.pro.title} за {formatKopecks(PRODUCTS.pro.priceKopecks)}
+              </BuyButton>
+            </form>
           </div>
 
           {/* VIP */}
@@ -138,7 +151,9 @@ export default function Pricing() {
               </p>
             </div>
             <div className="text-center mb-8 p-8 rounded-2xl border border-border">
-              <span className="text-6xl font-bold text-purple-400">1900</span>
+              <span className="text-6xl font-bold text-purple-400">
+                {PRODUCTS.ultimate.priceRubles}
+              </span>
               <span className="text-2xl font-normal align-top mr-1">₽</span>
             </div>
             <ul className="space-y-4 mb-8">
@@ -159,12 +174,12 @@ export default function Pricing() {
                 </li>
               ))}
             </ul>
-            <a
-              href="#"
-              className="block w-full text-center py-4 border-2 text-2xl bg-slate-800 border-accent-purple rounded-xl font-normal hover:border-purple-500 hover:bg-accent-purple/10 transition-all"
-            >
-              Купить Ultimate
-            </a>
+            <form action={startCheckout}>
+              <input type="hidden" name="productId" value={PRODUCTS.ultimate.id} />
+              <BuyButton variant="outline">
+                Купить Ultimate за {formatKopecks(PRODUCTS.ultimate.priceKopecks)}
+              </BuyButton>
+            </form>
           </div>
         </div>
       </div>

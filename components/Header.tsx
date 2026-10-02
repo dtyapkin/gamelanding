@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 const navLinks = [
   { href: "#income", label: "Возможности" },
@@ -18,7 +19,7 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-xl border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <nav className="flex items-center justify-between h-20 gap-4">
-          <a
+          <Link
             href="/"
             className="flex items-center gap-3 text-2xl font-bold shrink-0"
           >
@@ -31,7 +32,7 @@ export default function Header() {
               </span>
             </span>
             {/* <span className="hidden sm:inline">Online Game</span> */}
-          </a>
+          </Link>
 
           <ul className="hidden lg:flex items-center gap-8 list-none m-0 p-0">
             {navLinks.map((link) => (
@@ -46,10 +47,16 @@ export default function Header() {
             ))}
           </ul>
 
-          <div className="hidden lg:block shrink-0">
+          <div className="hidden lg:flex items-center gap-4 shrink-0">
+            <a
+              href="/download"
+              className="text-gray-400 font-medium hover:text-white transition-colors"
+            >
+              Мои покупки
+            </a>
             <a
               href="#pricing"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-white bg-accent-purple  text-sm"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-white bg-accent-purple text-sm"
             >
               Купить за 300 ₽
             </a>
@@ -89,6 +96,15 @@ export default function Header() {
               </a>
             </li>
           ))}
+          <li>
+            <a
+              href="/download"
+              onClick={handleLinkClick}
+              className="block text-lg font-semibold py-3 border-b border-border hover:text-accent-primary transition-colors"
+            >
+              Мои покупки
+            </a>
+          </li>
           <li>
             <a
               href="#pricing"

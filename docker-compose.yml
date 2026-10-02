@@ -1,0 +1,40 @@
+# =============================================================================
+#  ПРОДАКШЕН-ЗАПУСК ЧЕРЕЗ DOCKER COMPOSE
+# =============================================================================
+#  На сервере:
+#     1) создайте рядом с этим файлом .env  (скопируйте .env.example)
+#     2) docker compose up -d --build
+#     3) docker compose logs -f
+#
+#  Переменные НЕ хранятся в коде: docker-compose читает их из .env
+#  на сервере, который не попадает в git.
+# =============================================================================
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Эти значения используются на этапе сборки Next.js.
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+    image: gameland:latest
+    container_name: gameland
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+
+    # Прокси (nginx/Caddy) на хосте будет ходить на 127.0.0.1:3000
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

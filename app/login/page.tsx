@@ -1,139 +1,60 @@
-"use client";
+import LoginForm from "./login-form";
+import type { Metadata } from "next";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { login, signup } from "../auth/actions";
+export const metadata: Metadata = {
+  title: "Вход — GameOnline",
+  description: "Войдите, чтобы скачать купленные файлы",
+};
 
-export default function LoginPage() {
-  const searchParams = useSearchParams();
-  const errorParam = searchParams.get("error");
-  const messageParam = searchParams.get("message");
-  const emailParam = searchParams.get("email") ?? "";
+/**
+ * ПОЧЕМУ ЭТА СТРАНИЦА СЕРВЕРНАЯ (а не "use client", как было раньше)
+ * ------------------------------------------------------------------
+ * Раньше страница была клиентской и читала параметры адреса через хук
+ * `useSearchParams()`. Next.js 16 при генерации страницы во время сборки
+ * (`next build`) требует, чтобы любой вызов useSearchParams() находился
+ * внутри <Suspense>. Без этого СБОРКА ПАДАЛА:
+ *
+ *   ⨯ useSearchParams() should be wrapped in a suspense boundary at page "/login"
+ *   Export encountered an error on /login/page: /login, exiting the build.
+ *
+ * Это и была та самая ошибка, из-за которой Docker-деплой не собирался.
+ *
+ * Решение «правильным способом»: серверный компонент читает searchParams
+ * (в Next 16 это Promise) и передаёт готовые значения клиентскому компоненту
+ * с формой. Хук useSearchParams() вообще не нужен, а страница снова
+ * нормально генерируется при сборке.
+ */
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
 
-  const [isLogin, setIsLogin] = useState(true);
+  // ВАЖНО: значения из searchParams уже декодированы самим Next.js,
+  // поэтому decodeURIComponent() здесь вызывать НЕЛЬЗЯ:
+  // он испортит текст, в котором встречается символ «%».
+  const error = firstValue(params.error);
+  const message = firstValue(params.message);
+  const email = firstValue(params.email) ?? "";
+  const next = firstValue(params.next);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-        {/* Сообщение об ошибке от Supabase */}
-        {errorParam && (
-          <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-800">
-            <strong>Ошибка:</strong> {decodeURIComponent(errorParam)}
-          </div>
-        )}
-
-        {/* Информационное сообщение (например, «проверьте почту») */}
-        {messageParam && (
-          <div className="mb-4 p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
-            {decodeURIComponent(messageParam)}
-          </div>
-        )}
-
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">
-          {isLogin ? "Вход" : "Регистрация"}
-        </h1>
-
-        {isLogin ? (
-          <form action={login} className="space-y-4">
-            <div>
-              <label
-                htmlFor="login-email"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Email
-              </label>
-              <input
-                id="login-email"
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                defaultValue={emailParam}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="login-password"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Пароль
-              </label>
-              <input
-                id="login-password"
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2 px-4 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors font-medium"
-            >
-              Войти
-            </button>
-          </form>
-        ) : (
-          <form action={signup} className="space-y-4">
-            <div>
-              <label
-                htmlFor="signup-email"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Email
-              </label>
-              <input
-                id="signup-email"
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                defaultValue={emailParam}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="signup-password"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Пароль
-              </label>
-              <input
-                id="signup-password"
-                name="password"
-                type="password"
-                required
-                minLength={6}
-                autoComplete="new-password"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2 px-4 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors font-medium"
-            >
-              Зарегистрироваться
-            </button>
-          </form>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setIsLogin(!isLogin)}
-          className="mt-4 w-full text-center text-sm text-indigo-600 hover:text-indigo-500"
-        >
-          {isLogin
-            ? "Нет аккаунта? Зарегистрироваться"
-            : "Уже есть аккаунт? Войти"}
-        </button>
+    <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4">
+      <div className="max-w-md w-full p-8 bg-bg-glass border border-border rounded-2xl">
+        <LoginForm
+          initialError={error}
+          initialMessage={message}
+          initialEmail={email}
+          nextPath={next}
+        />
       </div>
     </div>
   );
+}
+
+function firstValue(value: string | string[] | undefined): string | null {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  return null;
 }

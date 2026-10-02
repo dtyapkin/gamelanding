@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function HeroNext() {
   return (
     <section className="relative bg-slate-950 py-20 lg:py-28 overflow-hidden pt-32 pb-20 lg:pt-44 lg:pb-20">

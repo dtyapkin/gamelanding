@@ -1,90 +1,54 @@
-'use server'
+"use server";
 
-import { YooKassa, CurrencyEnum } from '@webzaytsev/yookassa-ts-sdk'
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { randomUUID } from 'crypto'
+import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/dal";
+import { hasPaidFor } from "@/lib/orders";
+import { prepareCheckout } from "@/lib/checkout";
+import { getProduct } from "@/lib/products";
 
-const yookassa = YooKassa({
-  shop_id: process.env.YOOKASSA_SHOP_ID!,
-  secret_key: process.env.YOOKASSA_SECRET_KEY!,
-})
+/**
+ * «Купить» — Server Action, вызывается из формы в components/Pricing.tsx.
+ *
+ * Почему Server Action, а не обычная форма в API?
+ *   - код исполняется на сервере, поэтому ключи YooKassa недоступны браузеру;
+ *   - результат сразу рендерится в HTML (спид-индексы лучше, чем у клиентских
+ *     запросов), а JS не нужен для работы кнопки;
+ *   - Next.js сам добавляет CSRF-защиту: сервер проверяет Origin/Host,
+ *     поэтому чужий сайт не сможет отправить форму от имени пользователя.
+ *
+ * ВАЖНО ПРО `redirect()`: он бросает специальное исключение, поэтому
+ * мы НЕ оборачиваем его в try/catch. Всё, что может упасть, уже обработано
+ * внутри prepareCheckout() и возвращается как { ok: false, message }.
+ */
+export async function startCheckout(formData: FormData): Promise<void> {
+  // formData приходит из браузера, поэтому значение недоверенное.
+  const productId = formData.get("productId");
 
-export async function createPayment(productId: string, amount: number) {
-  const supabase = await createClient()
+  // requireUser сам уведёт на /login с параметром next=...,
+  // если пользователь ещё не вошёл. Код дальше выполнится
+  // только для авторизованного пользователя.
+  const user = await requireUser("/download");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
+  const product = getProduct(productId);
+  if (!product) {
+    redirect("/download?error=unknown_product");
   }
 
-  // 1. Создаём заказ со статусом "pending"
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({
-      user_id: user.id,
-      amount,
-      product_id: productId,
-      status: 'pending',
-    })
-    .select()
-    .single()
-
-  if (orderError || !order) {
-    console.error('Ошибка создания заказа:', orderError)
-    throw new Error('Не удалось создать заказ')
+  // Не даём оплатить повторно то, что уже куплено.
+  if (await hasPaidFor(user.id, product.id)) {
+    redirect(`/download?order_created=already_paid&product=${product.id}`);
   }
 
-  try {
-    // 2. Создаём платёж в YooKassa
-    const payment = await yookassa.payments.create(
-      {
-        amount: {
-          value: amount.toFixed(2),
-          currency: CurrencyEnum.RUB,
-        },
-        confirmation: {
-          type: 'redirect',
-          return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/download`,
-        },
-        capture: true,
-        description: `Покупка: ${productId}`,
-        metadata: {
-          order_id: order.id,
-          user_id: user.id,
-        },
-      },
-      randomUUID()
-    )
+  const result = await prepareCheckout({ userId: user.id, productId: product.id });
 
-    // 3. Проверяем тип confirmation ПЕРЕД доступом к confirmation_url
-    if (payment.confirmation?.type !== 'redirect') {
-      throw new Error('YooKassa вернула неожиданный тип подтверждения')
-    }
-
-    const confirmationUrl = payment.confirmation.confirmation_url
-
-    if (!confirmationUrl) {
-      throw new Error('YooKassa не вернула URL для оплаты')
-    }
-
-    // 4. Сохраняем ID платежа YooKassa в заказ
-    await supabase
-      .from('orders')
-      .update({ yookassa_payment_id: payment.id })
-      .eq('id', order.id)
-
-    // 5. Перенаправляем на страницу оплаты YooKassa
-    redirect(confirmationUrl)
-  } catch (error) {
-    console.error('Ошибка создания платежа:', error)
-
-    // Откатываем заказ при ошибке
-    await supabase.from('orders').delete().eq('id', order.id)
-
-    throw new Error('Не удалось создать платёж')
+  if (!result.ok) {
+    // Сообщение уходит в query-строку и показывается на /download.
+    // Коды ошибок вместо текста — чтобы текст можно было менять,
+    // не ломая уже отправленные ссылки.
+    redirect(`/download?error=${result.code}`);
   }
+
+  // Уходим на страницу оплаты YooKassa.
+  // Это ПОСЛЕ try/catch — редирект не должен перехватываться.
+  redirect(result.confirmationUrl);
 }
