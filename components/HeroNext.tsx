@@ -61,13 +61,13 @@ export default function HeroNext() {
                 {"test"}
               </Link> */}
 
-              <a
+              {/* <a
                 href="/test"
                 // target="_blank"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-xl text-white bg-bg-card border border-border hover:bg-bg-card/80 hover:border-white/25 transition-all"
               >
                 test
-              </a>
+              </a> */}
             </div>
 
             <div className="flex gap-6 flex-wrap text-gray-400 text-xs">
