@@ -31,6 +31,10 @@ const YOOKASSA_IP = "185.71.76.1"; // адрес из диапазона YooKass
 // значит сервер действительно берёт цену из своего каталога, а не от клиента.
 const PRODUCT_ID = "start";
 const EXPECTED_RUB = "300.00";
+// В базе сумма хранится в копейках целым числом, а в YooKassa — строкой
+// в рублях. Это разные форматы, и путать их нельзя: "300.00" в колонке
+// integer даёт ошибку 22P02.
+const EXPECTED_KOPEKS = Math.round(Number(EXPECTED_RUB) * 100);
 
 let passed = 0;
 let failed = 0;
@@ -211,48 +215,30 @@ async function testSession(cookie) {
   return res.status === 200;
 }
 
-/** 3. Покупатель может создать заказ (проверка политики RLS). */
+/**
+ * 3. Покупатель НЕ может писать в таблицу заказов.
+ *
+ * Это главная защита от покупки «за копейки»: если бы покупатель мог
+ * вставить заказ сам, он подставил бы amount_kopecks = 1, заплатил рубль
+ * и получил файл. Поэтому проверяем именно запрет, а не успех.
+ * Заказ для дальнейших шагов создаём сервисной ролью — так же, как это
+ * делает приложение.
+ */
 async function testInsertPolicy(userToken) {
-  console.log("\n3. Создание заказа покупателем (проверка RLS)");
+  console.log("\n3. Покупатель не может подделать заказ (проверка RLS)");
 
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
-    method: "POST",
-    headers: {
-      ...authHeaders(ANON_KEY, userToken),
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify({
-      user_id: null, // подставит триггер/RLS; если нет — увидим ошибку
-      product_id: PRODUCT_ID,
-      product_title: "Start",
-      amount_kopecks: 30000,
-      status: "pending",
-    }),
-  });
-  const body = await res.text();
-
-  if (res.ok) {
-    const created = JSON.parse(body);
-    const row = Array.isArray(created) ? created[0] : created;
-    const userId = row?.user_id;
-    ok(`заказ создан через RLS (id=${String(row?.id).slice(0, 8)}…)`);
-    check(
-      row?.status === "pending",
-      "статус задан как pending",
-      `получен статус ${row?.status}`,
-    );
-    return row;
-  }
-
-  // user_id = null нарушает NOT NULL, поэтому это ожидаемый отказ.
-  // Проверим тогда политику иначе — с явным своим user_id.
   const me = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: authHeaders(ANON_KEY, userToken),
   });
   const profile = await me.json();
+  const userId = profile?.id;
+  if (!userId) {
+    bad("не удалось узнать id тестового пользователя", await me.text());
+    return null;
+  }
 
-  const retry = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+  // Атака: вставить заказ с копеечной суммой.
+  const attack = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
     method: "POST",
     headers: {
       ...authHeaders(ANON_KEY, userToken),
@@ -260,27 +246,129 @@ async function testInsertPolicy(userToken) {
       Prefer: "return=representation",
     },
     body: JSON.stringify({
-      user_id: profile.id,
+      user_id: userId,
       product_id: PRODUCT_ID,
-      product_title: "Start",
-      amount_kopecks: 30000,
+      product_title: "Взлом за копейки",
+      amount_kopecks: 1,
       status: "pending",
     }),
   });
-  const retryBody = await retry.text();
 
-  if (retry.ok) {
-    const created = JSON.parse(retryBody);
+  if (attack.ok) {
+    // Если база всё-таки вставила строку — это критическая дыра.
+    // Убираем за собой, чтобы мусор не остался в базе.
+    const created = JSON.parse(await attack.text());
     const row = Array.isArray(created) ? created[0] : created;
-    ok(`заказ создан напрямую через REST (id=${String(row?.id).slice(0, 8)}…)`);
-    return row;
+    if (row?.id) {
+      await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${row.id}`, {
+        method: "DELETE",
+        headers: authHeaders(SERVICE_KEY),
+      });
+    }
+    bad(
+      "КРИТИЧНО: покупатель вставил заказ с произвольной суммой",
+      `RLS разрешил INSERT (HTTP ${attack.ok}). Так можно купить файл за копейки. ` +
+        `Удалите политику orders_insert_own_pending и выполните SQL заново.`,
+    );
+    return null;
   }
 
-  bad(
-    "покупатель не может создать заказ через REST",
-    `RLS запрещает вставку (HTTP ${retry.status}). Проверьте политику orders_user_insert.`,
+  ok(`INSERT покупателю запрещён (HTTP ${attack.status})`);
+
+  // Создаём настоящий pending-заказ сервисной ролью — так же, как приложение.
+  // Именно он нужен для следующих проверок: бить по несуществующей строке
+  // бессмысленно, PostgREST вернёт 204 «всё хорошо» на пустой результат.
+  const serverRes = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+    method: "POST",
+    headers: {
+      ...authHeaders(SERVICE_KEY),
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      user_id: userId,
+      product_id: PRODUCT_ID,
+      product_title: "Start",
+      amount_kopecks: EXPECTED_KOPEKS,
+      status: "pending",
+    }),
+  });
+
+  if (!serverRes.ok) {
+    bad("сервер не смог создать заказ через service_role", await serverRes.text());
+    return null;
+  }
+
+  const created = JSON.parse(await serverRes.text());
+  const row = Array.isArray(created) ? created[0] : created;
+  const orderId = row?.id;
+  ok(`заказ для проверок создан сервером (id=${String(orderId).slice(0, 8)}…)`);
+  check(
+    row?.amount_kopecks === EXPECTED_KOPEKS,
+    "в заказе серверная сумма в копейках",
+    `получено ${row?.amount_kopecks}, ожидалось ${EXPECTED_KOPEKS}`,
   );
-  return null;
+
+  // ВАЖНО: дальше проверяем не только код ответа, но и РЕАЛЬНЫЙ результат.
+  // PostgREST отвечает 204 даже если не изменил ни одной строки, поэтому
+  // единственный честный способ — после атаки перечитать заказ и сравнить.
+  const readOrder = async () => {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=status,amount_kopecks`, {
+      headers: authHeaders(SERVICE_KEY),
+    });
+    const data = await res.json();
+    return Array.isArray(data) ? data[0] : null;
+  };
+
+  // Атака 2: поднять заказ до succeeded, чтобы получить файл бесплатно.
+  const fakePaid = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(ANON_KEY, userToken),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status: "succeeded", paid_at: new Date().toISOString() }),
+  });
+  console.log(`   (ответ на попытку UPDATE: HTTP ${fakePaid.status})`);
+
+  const afterUpdate = await readOrder();
+  check(
+    afterUpdate?.status === "pending",
+    "покупатель не может сам отметить заказ оплаченным",
+    `статус в базе после попытки: ${afterUpdate?.status}`,
+  );
+
+  // Атака 3: попытаться изменить сумму на копейку.
+  await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(ANON_KEY, userToken),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ amount_kopecks: 1 }),
+  });
+
+  const afterAmount = await readOrder();
+  check(
+    afterAmount?.amount_kopecks === EXPECTED_KOPEKS,
+    "покупатель не может изменить сумму заказа",
+    `сумма в базе после попытки: ${afterAmount?.amount_kopecks}`,
+  );
+
+  // Атака 4: удалить заказ.
+  await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+    method: "DELETE",
+    headers: authHeaders(ANON_KEY, userToken),
+  });
+
+  const afterDelete = await readOrder();
+  check(
+    afterDelete !== null,
+    "покупатель не может удалить заказ",
+    "заказ исчез из таблицы после DELETE",
+  );
+
+  return row;
 }
 
 /** 4. Неоплаченный заказ не выдаёт файл. */
@@ -291,11 +379,15 @@ async function testUnpaidDenied(orderId, cookie) {
     headers: { cookie },
     redirect: "manual",
   });
+  // 402 «Payment Required» — осмысленный ответ: оплаты нет, поэтому и файла нет.
   check(
-    res.status === 403 || res.status === 404,
+    res.status === 402,
     "файл не отдан для неоплаченного заказа",
-    `получен HTTP ${res.status}, ожидался 403/404`,
+    `получен HTTP ${res.status}, ожидался 402`,
   );
+
+  const location = res.headers.get("location") || "";
+  check(!location.includes("token="), "в отказе нет ссылки на файл", location.slice(0, 80));
 
   const statusRes = await fetch(`${APP_URL}/api/orders/${orderId}`, {
     headers: { cookie },
@@ -338,20 +430,27 @@ async function testPaidGranted(orderId, cookie) {
     redirect: "manual",
   });
 
-  if (res.status !== 200) {
-    bad("файл не выдан для оплаченного заказа", `получен HTTP ${res.status}`);
+  // Эндпоинт отдаёт 302 на подписанную ссылку — специально, чтобы токен
+  // не попадал в HTML страницы. Поэтому проверяем заголовок Location.
+  if (res.status !== 302) {
+    bad("ожидался редирект 302 на подписанную ссылку", `получен HTTP ${res.status}`);
     return null;
   }
+  ok("оплаченный заказ отдал редирект 302");
 
-  const url = await res.text();
+  const signedUrl = res.headers.get("location") || "";
   check(
-    url.includes("token=") && url.includes("paid-files"),
-    "выдана подписанная ссылка на приватный файл",
-    url.slice(0, 120),
+    signedUrl.includes("token=") && signedUrl.includes("paid-files"),
+    "в редиректе подписанная ссылка на приватный файл",
+    signedUrl.slice(0, 120),
+  );
+  check(
+    !res.headers.get("cache-control")?.includes("max-age=31536000"),
+    "ответ не кэшируется прокси",
+    res.headers.get("cache-control") || "нет заголовка",
   );
 
-  // Ссылка должна вести именно на файл, а не на страницу ошибки.
-  const fileRes = await fetch(url, { redirect: "follow" });
+  const fileRes = await fetch(signedUrl, { redirect: "follow" });
   check(fileRes.ok, "файл по ссылке скачивается", `HTTP ${fileRes.status}`);
 
   const bytes = Buffer.from(await fileRes.arrayBuffer());
@@ -361,7 +460,7 @@ async function testPaidGranted(orderId, cookie) {
     `первые байты: ${bytes.subarray(0, 4).toString("hex")}, размер ${bytes.length}`,
   );
 
-  return url;
+  return signedUrl;
 }
 
 /** 6. Чужой пользователь не может скачать файл. */
@@ -372,21 +471,44 @@ async function testIntruderDenied(orderId, intruderCookie) {
     headers: { cookie: intruderCookie },
     redirect: "manual",
   });
-  check(
-    res.status === 403 || res.status === 404 || res.status === 307,
+check(
+    res.status === 404 || res.status === 403 || res.status === 402,
     "доступ постороннему отказан",
     `получен HTTP ${res.status}, ожидался 403/404`,
   );
 
-  const body = res.status === 200 ? await res.text() : "";
-  check(!body.includes("token="), "постороннему не выдан токен файла", body.slice(0, 80));
+  const location = res.headers.get("location") || "";
+  check(!location.includes("token="), "постороннему не выдан токен файла", location.slice(0, 80));
 }
 
-/** 7. Ключи YooKassa живы: платёж создаётся и отменяется. */
+/** 7. Ключи YooKassa живы: платёж создаётся с чеком. */
 async function testYooKassa(orderId) {
   console.log("\n7. Ключи YooKassa");
 
   const basic = Buffer.from(`${SHOP_ID}:${YOOKASSA_SECRET}`).toString("base64");
+
+  // 7.1. Проверка ключей БЕЗ побочных эффектов: просто читаем платежи.
+  // Отвечает 200, если ключи рабочие, и 401, если нет. Ничего не создаём.
+  const listRes = await fetch("https://api.yookassa.ru/v3/payments?limit=1", {
+    headers: { Authorization: `Basic ${basic}` },
+  });
+  if (!listRes.ok) {
+    bad(
+      "ключи YooKassa не работают",
+      `HTTP ${listRes.status}: ${(await listRes.text()).slice(0, 200)}. Проверьте ключи и режим.`,
+    );
+    return;
+  }
+
+  const list = await listRes.json();
+  ok("ключи YooKassa приняты");
+  if (list.items?.length) {
+    const mode = list.items[0].test ? "тестовый" : "БОЕВОЙ";
+    console.log(`   (кабинет работает в режиме: ${mode})`);
+  }
+
+  // 7.2. Создаём платёж ровно тем же запросом, что и приложение, — это
+  // главная проверка: без чека YooKassa отвечает 400 и оплата невозможна.
   const paymentRes = await fetch("https://api.yookassa.ru/v3/payments", {
     method: "POST",
     headers: {
@@ -401,9 +523,23 @@ async function testYooKassa(orderId) {
         type: "redirect",
         return_url: `${APP_URL}/download?order=${orderId}`,
       },
-      description: {
-        description: `E2E test: тариф ${PRODUCT_ID}`,
-        locale_code: "ru-RU",
+      description: `Тариф ${PRODUCT_ID} — GameLand`,
+      // Чек обязателен: без него YooKassa отвечает 400 «Receipt is missing
+      // or illegal». Формат повторяет lib/yookassa.ts один в один.
+      receipt: {
+        customer: { email: BUYER_EMAIL },
+        items: [
+          {
+            description: `Тариф ${PRODUCT_ID} — GameLand`,
+            quantity: "1.00",
+            amount: { value: EXPECTED_RUB, currency: "RUB" },
+            vat_code: 3,
+            payment_subject: "another",
+            payment_mode: "full_payment",
+          },
+        ],
+        vat_code: 3,
+        total_amount: { value: EXPECTED_RUB, currency: "RUB" },
       },
       metadata: { order_id: orderId },
     }),
@@ -420,6 +556,14 @@ async function testYooKassa(orderId) {
 
   const payment = JSON.parse(paymentBody);
   ok(`платёж создан в YooKassa (${payment.id})`);
+
+  // Явная проверка режима. Разница принципиальна: боевой ключ создаёт
+  // настоящие платежи в кабинете, пока мы тестируем разработку.
+  console.log(
+    payment.test
+      ? "   (режим: ТЕСТОВЫЙ — деньги не могут списаться, всё в порядке)"
+      : "   (ВНИМАНИЕ: режим БОЕВОЙ. Для разработки нужны тестовые ключи.)",
+  );
   check(
     payment.amount?.value === EXPECTED_RUB,
     "сумма в YooKassa ровно та, что задана сервером",
@@ -430,16 +574,26 @@ async function testYooKassa(orderId) {
     "есть ссылка на оплату",
   );
 
-  // Отменяем тестовый платёж, чтобы не оставлять мусор в кабинете.
+  // Отменяем платёж, чтобы не оставлять мусор в кабинете.
+  // Это НЕ провал теста: YooKassa не даёт отменить платёж, который покупатель
+  // ещё не подтвердил (статус pending), и отвечает 400. Такой платёж сам
+  // истекает, деньги по нему списаться не могут. В самом приложении
+  // отмена не используется — её зовёт только этот тест.
   const cancelRes = await fetch(`https://api.yookassa.ru/v3/payments/${payment.id}/cancel`, {
     method: "POST",
-    headers: { Authorization: `Basic ${basic}` },
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Idempotence-Key": `e2e-cancel-${stamp}`,
+    },
   });
-  check(
-    cancelRes.ok || cancelRes.status === 409,
-    "тестовый платёж отменён",
-    `HTTP ${cancelRes.status}`,
-  );
+
+  if (cancelRes.ok || cancelRes.status === 409) {
+    ok("тестовый платёж отменён");
+  } else {
+    console.log(`   [ок] отменить не вышло (HTTP ${cancelRes.status}) — не страшно:`);
+    console.log("        платёж остался в статусе pending, деньги не списаны,");
+    console.log("        YooKassa сама его со временем уберёт.");
+  }
 }
 
 /** 8. Поддельный вебхук не проходит. */
@@ -511,10 +665,14 @@ try {
       await testUnpaidDenied(order.id, buyerCookie);
       await testPaidGranted(order.id, buyerCookie);
       await testIntruderDenied(order.id, intruderCookie);
-      await testYooKassa(order.id);
     } else {
       bad("пропущены тесты оплаты: не удалось создать заказ");
     }
+
+    // Проверка ключей YooKassa не зависит от заказа, поэтому выполняется
+    // всегда — даже если выше что-то сломалось. Иначе одна ошибка в базе
+    // маскировала бы ещё и проблему с платёжными ключами.
+    await testYooKassa(order?.id ?? "unknown");
   }
 
   await testWebhookSecurity();

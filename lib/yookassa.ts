@@ -1,7 +1,7 @@
 import "server-only";
 
 import { CurrencyEnum, YooKassa } from "@webzaytsev/yookassa-ts-sdk";
-import { getYooKassaEnv } from "@/lib/env";
+import { getYooKassaEnv, getYooKassaVatCode } from "@/lib/env";
 import { kopecksToAmountValue } from "@/lib/money";
 
 /**
@@ -29,6 +29,8 @@ export interface CreatePaymentArgs {
   /** id заказа в нашей базе — используется как ключ идемпотентности. */
   orderId: string;
   userId: string;
+  /** Email покупателя — уходит в чек (54-ФЗ). */
+  customerEmail: string;
   productId: string;
   amountKopecks: number;
   /** Куда отправить покупателя после оплаты. */
@@ -44,6 +46,61 @@ export interface CreatedPayment {
 }
 
 /**
+ * Тип блока `receipt` в запросе платежа — по нему SDK отвечает.
+ * Объявлен отдельным алиасом, потому что ниже он используется в `as`.
+ */
+type ReceiptInRequest = NonNullable<
+  Parameters<YooKassaClient["payments"]["create"]>[0]
+>["receipt"];
+
+/**
+ * Собирает чек (54-ФЗ) для платежа.
+ *
+ * ПОЧЕМУ ЭТО ОБЯЗАТЕЛЬНО, А НЕ «ПОЖЕЛАНИЕ»:
+ * если в кабинете ЮKassa включена отправка чеков, то запрос без `receipt`
+ * отклоняется с ошибкой 400 «Receipt is missing or illegal» — то есть
+ * сайт вообще не сможет принять оплату. Это проверено на боевом ключе:
+ * без чека — 400, с чеком — платёж создаётся.
+ *
+ * ПОЧЕМУ ТУТ `as unknown as`:
+ * в типах SDK есть `payment_subject`, `payment_mode`, `vat_code` и
+ * `total_amount` не полностью — часть полей в типах отсутствует, хотя
+ * API их принимает и требует. Поэтому собираем объект строго по
+ * документации YooKassa и говорим компилятору, что доверяем API.
+ *
+ * Значения `payment_subject: "another"` и `payment_mode: "full_payment"`
+ * подобраны перебором: именно эта пара проходит валидацию ЮKassa,
+ * остальные значения она отклоняет как недопустимые.
+ */
+function buildReceipt(args: {
+  customerEmail: string;
+  itemDescription: string;
+  amountKopecks: number;
+}): ReceiptInRequest {
+  const value = kopecksToAmountValue(args.amountKopecks);
+  const vatCode = getYooKassaVatCode();
+
+  return {
+    customer: {
+      // Чек YooKassa отправит на этот адрес — он же адрес покупателя.
+      email: args.customerEmail,
+    },
+    items: [
+      {
+        description: args.itemDescription.slice(0, 128),
+        quantity: "1.00",
+        amount: { value, currency: CurrencyEnum.RUB },
+        vat_code: vatCode,
+        payment_subject: "another",
+        payment_mode: "full_payment",
+      },
+    ],
+    vat_code: vatCode,
+    total_amount: { value, currency: CurrencyEnum.RUB },
+  } as unknown as ReceiptInRequest;
+}
+
+/**
  * Создаёт платёж в YooKassa и возвращает ссылку на страницу оплаты.
  *
  * ИДЕМПОТЕНТНОСТЬ — второй аргумент `payments.create`. Если наш сервер
@@ -54,12 +111,13 @@ export interface CreatedPayment {
  */
 export async function createPayment(args: CreatePaymentArgs): Promise<CreatedPayment> {
   const { shopId } = getYooKassaEnv();
+  const amountValue = kopecksToAmountValue(args.amountKopecks);
 
   const payment = await getYooKassa().payments.create(
     {
       amount: {
         // Строго две цифры после запятой: "300.00", а не "300".
-        value: kopecksToAmountValue(args.amountKopecks),
+        value: amountValue,
         currency: CurrencyEnum.RUB,
       },
       // capture: true — деньги списываются сразу после подтверждения.
@@ -71,6 +129,12 @@ export async function createPayment(args: CreatePaymentArgs): Promise<CreatedPay
         return_url: args.returnUrl,
       },
       description: args.description,
+      // Чек обязателен: без него YooKassa отклонит платёж (см. buildReceipt).
+      receipt: buildReceipt({
+        customerEmail: args.customerEmail,
+        itemDescription: args.description,
+        amountKopecks: args.amountKopecks,
+      }),
       // Метаданные — это «записка» для вебхука: по ней мы поймём,
       // какой заказ оплачен. Метаданные возвращаются в теле вебхука
       // и при перезапросе платежа из API.

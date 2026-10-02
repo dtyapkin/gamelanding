@@ -76,12 +76,45 @@ export async function getOrCreatePendingOrder({
   userId,
   product,
 }: NewOrderInput): Promise<{ order: OrderRow; created: boolean }> {
-  const supabase = await createClient();
+  // Именно admin-клиент (service_role), а НЕ сессия пользователя.
+  //
+  // ПОЧЕМУ: заказ создаёт сервер, и сумма в нём — серверная величина из
+  // lib/products.ts. Если вставлять сессией пользователя, то база обязана
+  // разрешить authenticated вставку строк в orders, а вместе с ней покупатель
+  // получает REST-доступ к таблице: он вставит заказ с произвольной
+  // суммой и product_id, оплатит копейки и получит файл задаром.
+  //
+  // Через service_role политики RLS не применяются, поэтому никакие
+  // INSERT-политики для authenticated не нужны вообще — покупатель в базу
+  // заказов не пишет ничего (в т.ч. не может подделать status).
+  const supabase = getSupabaseAdmin();
 
   const cutoff = new Date(Date.now() - PENDING_ORDER_TTL_MINUTES * 60_000).toISOString();
 
   const existing = await findPendingOrder(supabase, userId, product.id, cutoff);
-  if (existing) return { order: existing, created: false };
+  if (existing) {
+    // Строгая проверка: «битый» заказ (например, оставшийся от времени,
+    // когда вставка через REST была ещё разрешена) переиспользовать нельзя —
+    // иначе YooKassa получит чужую сумму. Сумма сервера — единственная верная.
+    if (existing.amount_kopecks === product.priceKopecks) {
+      return { order: existing, created: false };
+    }
+
+    console.warn(
+      `Заказ ${existing.id} имеет amount_kopecks=${existing.amount_kopecks}, ` +
+        `а тариф стоит ${product.priceKopecks}. Создаю новый заказ.`,
+    );
+
+    // Гасим битый заказ, иначе частичный уникальный индекс не даст вставить новый.
+    const { error: cancelError } = await supabase
+      .from("orders")
+      .update({ status: "canceled" })
+      .eq("id", existing.id)
+      .eq("status", "pending");
+    if (cancelError) {
+      console.error("Не удалось закрыть битый заказ:", cancelError.message);
+    }
+  }
 
   const { data, error } = await supabase
     .from("orders")
@@ -105,16 +138,18 @@ export async function getOrCreatePendingOrder({
   // (сработал partial unique index). Тогда просто берём его.
   if (error?.code === UNIQUE_VIOLATION) {
     const raced = await findPendingOrder(supabase, userId, product.id, cutoff);
-    if (raced) return { order: raced, created: false };
+    if (raced && raced.amount_kopecks === product.priceKopecks) {
+      return { order: raced, created: false };
+    }
   }
 
   throw new Error(`Не удалось создать заказ: ${error?.message ?? "неизвестная ошибка"}`);
 }
 
-type SessionClient = Awaited<ReturnType<typeof createClient>>;
+type AnySupabaseClient = ReturnType<typeof getSupabaseAdmin>;
 
 async function findPendingOrder(
-  supabase: SessionClient,
+  supabase: AnySupabaseClient,
   userId: string,
   productId: string,
   cutoffIso: string,

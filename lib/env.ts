@@ -105,6 +105,27 @@ export function getSignedUrlTtlSeconds(): number {
 }
 
 /**
+ * Ставка НДС для чека (54-ФЗ). Значения YooKassa:
+ *   1 — НДС 20%
+ *   2 — НДС 10%
+ *   3 — без НДС
+ *   4 — НДС 20/120
+ *   5 — НДС 10/110
+ *   6 — НДС 0
+ *
+ * По умолчанию 3 («без НДС») — так чаще всего работают ИП и самозанятые.
+ * Если у вас ОСНО с НДС, поставьте в .env.local  YOOKASSA_VAT_CODE=1.
+ *
+ * ВАЖНО: если в кабинете ЮKassa включена отправка чеков, платёж не создастся
+ * вообще без корректного vat_code — ЮKassa вернёт ошибку 400.
+ */
+export function getYooKassaVatCode(): number {
+  const value = Number(optional("YOOKASSA_VAT_CODE") ?? 3);
+  if (![1, 2, 3, 4, 5, 6].includes(value)) return 3;
+  return value;
+}
+
+/**
  * Диагностика для /api/health: показывает, какие переменные заданы,
  * не раскрывая их значения. Помогает понять, почему Docker-контейнер падает.
  */

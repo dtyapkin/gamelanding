@@ -39,7 +39,18 @@ export async function startCheckout(formData: FormData): Promise<void> {
     redirect(`/download?order_created=already_paid&product=${product.id}`);
   }
 
-  const result = await prepareCheckout({ userId: user.id, productId: product.id });
+  // Чек по 54-ФЗ YooKassa отправляет на email покупателя, поэтому без него
+  // платёж не создать. При регистрации email всегда есть, но тип у Supabase
+  // допускает отсутствие — проверяем явно, чтобы не получить платёж без чека.
+  if (!user.email) {
+    redirect("/download?error=no_email");
+  }
+
+  const result = await prepareCheckout({
+    userId: user.id,
+    customerEmail: user.email,
+    productId: product.id,
+  });
 
   if (!result.ok) {
     // Сообщение уходит в query-строку и показывается на /download.

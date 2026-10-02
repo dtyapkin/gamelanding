@@ -42,6 +42,8 @@ export type PrepareCheckoutResult =
 
 export async function prepareCheckout(params: {
   userId: string;
+  /** Email покупателя — YooKassa отправит на него чек. */
+  customerEmail: string;
   productId: unknown;
 }): Promise<PrepareCheckoutResult> {
   const product = getProduct(params.productId);
@@ -55,7 +57,7 @@ export async function prepareCheckout(params: {
   }
 
   try {
-    return await createPaymentForProduct(params.userId, product);
+    return await createPaymentForProduct(params.userId, params.customerEmail, product);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     console.error(`[checkout] Не удалось создать платёж для ${product.id}:`, detail);
@@ -69,6 +71,7 @@ export async function prepareCheckout(params: {
 
 async function createPaymentForProduct(
   userId: string,
+  customerEmail: string,
   product: Product,
 ): Promise<PrepareCheckoutResult> {
   const { order } = await getOrCreatePendingOrder({ userId, product });
@@ -76,6 +79,7 @@ async function createPaymentForProduct(
   const payment = await createPayment({
     orderId: order.id,
     userId,
+    customerEmail,
     productId: product.id,
     amountKopecks: order.amount_kopecks,
     returnUrl: buildReturnUrl(order.id),

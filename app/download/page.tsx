@@ -37,6 +37,8 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 const ERROR_MESSAGES: Record<string, string> = {
   unknown_product: "Такого тарифа не существует. Выберите тариф на главной странице.",
+  no_email:
+    "У вашего аккаунта не указан email, поэтому мы не можем отправить чек об оплате. Добавьте email в профиле и попробуйте снова.",
   payment_failed:
     "Не удалось создать платёж в платёжной системе. Попробуйте ещё раз через минуту — деньги при этом не списывались.",
 };
