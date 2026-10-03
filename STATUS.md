@@ -1,11 +1,11 @@
 # Статус работы — GameLand
 
-Обновлено: конец сессии 2026-10-02. Точка остановки: **регистрация не работает, ждём решения по SMTP.**
+Обновлено: 2026-10-03. Точка остановки: **регистрация починена, сайт задеплоен. Остались реальные ZIP и перевод YooKassa в боевой режим.**
 
-## Тестовая база: 27/27 ✅
+## Тестовая база: 29/29 ✅
 
 ```
-npm run test:e2e        # 27 пройдено, 0 провалено
+npm run test:e2e        # 29 пройдено, 0 провалено
 npm run lint            # 0 ошибок, 14 предупреждений (<img>)
 npm run build           # успешно
 ```
@@ -15,33 +15,35 @@ npm run build           # успешно
 ## Что сделано
 
 - **Оплата.** Сайт-заглушка → рабочая оплата: серверный каталог (`lib/products.ts`, цены 300/900/1900 ₽), YooKassa, вебхук с проверкой IP и перезапросом платежа из API, подписанные ссылки на файлы с TTL 60 с.
-- **Чек 54-ФЗ.** Найдена причина «оплата не работает»: YooKassa отклоняет запрос без `receipt` (`400 Receipt is missing or illegal`). Добавлен `buildReceipt()` в `lib/yookassa.ts`, email покупателя передаётся через `app/actions/payment.ts` → `lib/checkout.ts`. Переменная `YOOKASSA_VAT_CODE` (по умолчанию `3` = без НДС).
+- **Чек 54-ФЗ.** Причина «оплата не работает»: YooKassa отклоняет запрос без `receipt` (`400 Receipt is missing or illegal`). Добавлен `buildReceipt()` в `lib/yookassa.ts`, email покупателя идёт через `app/actions/payment.ts` → `lib/checkout.ts`. Переменная `YOOKASSA_VAT_CODE` (по умолчанию `3` = без НДС).
 - **Дыра в RLS (была критической).** Покупатель мог вставить заказ с произвольной суммой и купить файл за копейки. `getOrCreatePendingOrder()` переведён на `service_role`; INSERT-политика `orders_insert_own_pending` удалена из `supabase/migrations/0001_orders.sql`. Покупатель теперь не может ничего писать в таблицу заказов.
-- **Docker.** Standalone-образ собирается чисто: 20.8 МБ, только рантайм. `npm run build` + `node .next/standalone/server.js` проверено: `health ok:true`, `/download` → 307 на логин, вебхук с чужого IP → 403.
-- **Тесты.** `scripts/e2e-test.mjs` проверяет всю цепочку и **сам себя убирает** (в `orders` после прогона 0 строк). Важно: проверки безопасности бьют по существующей строке и сверяют результат в базе — код ответа сам по себе ничего не значит (PostgREST отвечает `204` и на пустой результат).
-- **Документация.** `SETUP.md` дополнен: чек обязателен, разбор ошибок `Receipt is missing or illegal` и `Error in shopId or secret key`, `YOOKASSA_VAT_CODE`.
-- **Ошибки пользователя.** `app/auth/actions.ts` → `humanSignupError()` переводит английские ошибки Supabase на русские (в т.ч. нерабочую отправку писем).
+- **Регистрация (была сломана).** Причина: self-hosted Supabase отклонял любую регистрацию с `500 Error sending confirmation email` (нет SMTP). Включён автоконфирм в Dokploy — см. ниже точную причину, почему прежняя попытка не сработала.
+- **Ошибки пользователя.** `app/auth/actions.ts` → `humanSignupError()` переводит английские ошибки Supabase на русские.
+- **Деплой.** Приложение живёт на `gamedive.ru`, обновляется автоматически при push в `main` (`autoDeploy = true`).
+- **Документация.** `SETUP.md` дополнен: чек обязателен, разбор `Receipt is missing or illegal` и `Error in shopId or secret key`, `YOOKASSA_VAT_CODE`.
+
+---
+
+## Как устроен деплой (важно)
+
+Dokploy: `https://vps.gamedive.ru`, API-база — **`/api`** (НЕ `/api/v1`), заголовок **`x-api-key`**, параметры — обычные query/JSON. В проекте `game` (environment `production`):
+
+- приложение **`gamedive`**, id `3WNCXQ2QQd9HMTXVh7hRd` — GitHub `dtyapkin/gamelanding`, ветка `main`, `buildType = nixpacks`, домен `gamedive.ru` → порт 3000, HTTPS. **`autoDeploy = true`: любой push в `main` деплоится сам.**
+- compose **`supabase`**, id `42cz-ivPS1rFn5fAUU-NG` — здесь же крутится Supabase (auth, db, kong, studio).
+
+Переменные окружения приложения уже заполнены (Supabase, service_role, YooKassa test, `YOOKASSA_VAT_CODE=3`, `NEXT_PUBLIC_BASE_URL`).
+
+### Почему путь B сначала не сработал
+
+В `.env` Supabase стоял `GOTRUE_MAILER_AUTOCONFIRM=true`, но он **игнорировался**: compose берёт значение из `${ENABLE_EMAIL_AUTOCONFIRM}`. Настоящий переключатель — `ENABLE_EMAIL_AUTOCONFIRM`. Он был `false`, изменён на `true`, выполнен `compose.redeploy`. Проверка: `/auth/v1/settings` → `mailer_autoconfirm: true`.
+
+⚠️ Цена пути B: регистрация идёт на **любую** почту, письма всё ещё не отправляются. Восстанавливать пароль пока нельзя. Вернуться к SMTP до приёма реальных денег.
 
 ---
 
 ## Что осталось сделать (по порядку)
 
-### 1. 🔴 РЕГИСТРАЦИЯ НЕ РАБОТАЕТ — нужно решение
-
-```
-POST /auth/v1/signup → HTTP 500 {"msg":"Error sending confirmation email"}
-mailer_autoconfirm: false
-```
-
-Self-hosted Supabase без рабочего SMTP + включённое подтверждение = тупик: зарегистрироваться нельзя.
-
-**Вариант А (правильно):** в `.env` контейнера Supabase задать `GOTRUE_SMTP_HOST/PORT/USER/PASS/ADMIN_EMAIL`, перезапустить `auth`. Нужны SMTP-данные.
-
-**Вариант Б (быстро):** `GOTRUE_MAILER_AUTOCONFIRM=true`, перезапустить `auth`. Код уже это поддерживает (`app/auth/actions.ts:68` — при `data.session` сразу пускает на `/download`). Цена: регистрация на любой, даже несуществующей почте.
-
-**Нужно от пользователя:** есть ли доступ к `.env` контейнера Supabase / SSH на хост.
-
-### 2. 🔴 Тестовые ZIP в боевом баке
+### 1. 🟡 Настоящие ZIP в баке
 
 ```
 products/start/gameland-start.zip
@@ -49,34 +51,32 @@ products/pro/gameland-pro.zip
 products/ultimate/gameland-ultimate.zip
 ```
 
-Все три пути есть, но внутри — заглушки. ⚠️ `npm run check:storage` заливает заглушки с перезаписью — **не запускать после загрузки настоящих файлов**.
+Сейчас внутри — тестовые архивы (решено оставить, чтобы тест оставался честным). ⚠️ `npm run check:storage` заливает заглушки с перезаписью — **не запускать после загрузки настоящих файлов**.
 
-### 3. 🟡 Закоммитить и запушить (10 файлов не закоммичены)
+### 2. 🟢 Перед приёмом денег
 
-Просили разрешения, ответа не было. Без пуша Dockploy не увидит фиксы.
+- YooKassa: тестовый → боевой режим, новые ключи, обновить env в Dokploy, пересборка.
+- В кабинете YooKassa прописать уведомления: `https://gamedive.ru/api/webhooks/yookassa`.
+- Одна реальная покупка на минимальную сумму end-to-end (проверить и чек).
+- По желанию — настроить SMTP и выключить автоконфирм.
 
-### 4. 🟡 Задеплоить (вручную, Dockploy API даёт 401)
+---
 
-1. Приложение: Dockerfile, репозиторий `dtyapkin/gamelanding`, ветка `main`.
-2. **Environment — 6 переменных** (standalone не читает `.env.local`, только настоящие переменные окружения):
-   ```
-   NEXT_PUBLIC_SUPABASE_URL       https://api.gamedive.ru
-   NEXT_PUBLIC_SUPABASE_ANON_KEY  <из .env.local>
-   SUPABASE_SERVICE_ROLE_KEY      <из .env.local>
-   YOOKASSA_SHOP_ID               <из .env.local>
-   YOOKASSA_SECRET_KEY            <из .env.local, test_>
-   NEXT_PUBLIC_BASE_URL           https://gamedive.ru
-   ```
-3. Домен `gamedive.ru` → приложение.
-4. YooKassa → уведомления → `https://gamedive.ru/api/webhooks/yookassa`.
+## Полезно знать
 
-После деплоя — прогнать тест по боевому домену тестовой картой.
+- YooKassa сейчас в **тестовом** режиме: платежи `test: true`, деньги списаться не могут.
+- YooKassa не даёт отменить неподтверждённый платёж (`400 Incorrect payment_id`) — в тесте это не провал, такие платежи истекают сами.
+- `GET` платежа YooKassa не возвращает `receipt` — фактическая отправка чека подтверждается только успешной оплатой.
+- В баке `paid-files` лежит посторонний файл `7figure.docx` — не используется, можно удалить.
+- Standalone-сборка требует `NEXT_OUTPUT_STANDALONE=1` в **той же** команде, что и `npm run build` (в PowerShell переменная не переживает вызовы).
+- `NEXT_PUBLIC_*` зашиваются в код на этапе сборки — после смены ключей обязательна пересборка.
+- Docker локально не работает (нет демона), проверка образа сделана вручную через standalone.
 
-### 5. 🟢 Перед приёмом денег
+---
 
-- Настоящие ZIP → бакет.
-- YooKassa: тестовый → боевой режим, новые ключи, пересборка.
-- Одна реальная покупка на минимальную сумму end-to-end.
+## Тесты: важный урок
+
+Прежние 27 проверок создавали пользователя через **админский** API с `email_confirm: true` — этот путь обходил отправку письма и подтверждение, поэтому не видел сломанной регистрации. Добавлен шаг `0`: `POST /auth/v1/signup` анонимным ключом, как форма на сайте. Также добавлена проверка `/api/health` перед прогоном (иначе вместо отчёта был стектрейс `ECONNREFUSED`).
 
 ---
 
@@ -86,19 +86,8 @@ products/ultimate/gameland-ultimate.zip
 - `YOOKASSA_SECRET_KEY` перевыпущен.
 - Активация новых ключей (`sb_secret_...`) недоступна: кнопки «Create new API keys» на этой версии Supabase нет. Kill-switch — только ротация `JWT_SECRET`, что требует доступа к серверу.
 
----
-
 ## Секреты
 
 - `.env.local` — все ключи, закоммичен быть не может (в `.gitignore`).
 - `.env.example` — только заглушки, безопасен.
 - **Никогда не выводить значения ключей в чат/логи.**
-
-## Полезно знать
-
-- YooKassa сейчас в **тестовом** режиме: платежи `test: true`, деньги списаться не могут.
-- YooKassa не даёт отменить неподтверждённый платёж (`400 Incorrect payment_id`) — в тесте это не считается провалом, такие платежи истекают сами.
-- В баке `paid-files` лежит посторонний файл `7figure.docx` — не используется, можно удалить.
-- Docker локально не работает (нет демона), проверка образа сделана вручную через standalone.
-- Standalone-сборка требует `NEXT_OUTPUT_STANDALONE=1` в **той же** команде, что и `npm run build` (в PowerShell переменная не переживает вызовы).
-- `NEXT_PUBLIC_*` зашиваются в код на этапе сборки — после смены ключей обязательна пересборка.

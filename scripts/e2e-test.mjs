@@ -238,8 +238,11 @@ async function testPublicSignup() {
   const autoconfirm = settings?.mailer_autoconfirm === true;
 
   if (autoconfirm) {
+    // GoTrue отдаёт сессию плоскими полями (access_token в корне), а не
+    // вложенным объектом session — так же, как её показывает supabase-js.
+    const hasSession = Boolean(created.session || created.access_token);
     check(
-      Boolean(created.session),
+      hasSession,
       "новый пользователь сразу получает сессию и попадает на страницу покупок",
       "сессии в ответе нет, хотя подтверждение выключено — вход будет невозможен",
     );
