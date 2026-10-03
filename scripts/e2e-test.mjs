@@ -174,6 +174,81 @@ async function deleteUser(userId) {
 // Тесты
 // ---------------------------------------------------------------------------
 
+/**
+ * 0. Регистрация через публичную форму — ровно тот путь, которым идёт
+ *    посетитель сайта.
+ *
+ * ПОЧЕМУ ОТДЕЛЬНЫЙ ТЕСТ, А НЕ ЧАСТЬ СОЗДАНИЯ ПОЛЬЗОВАТЕЛЕЙ:
+ * все остальные тесты создают пользователя через админский API с
+ * email_confirm: true. Такой пользователь обходит и отправку письма, и
+ * подтверждение адреса. Поэтому сломанная почта была не видна: 27 зелёных
+ * проверок, а зарегистрироваться невозможно. Этот шаг закрывает именно
+ * эту дыру в тестах.
+ *
+ * Что считаем провалом:
+ *   - ответ 5xx (например «Error sending confirmation email»);
+ *   - отсутствие сессии, если подтверждение по почте выключено
+ *     (значит человек не сможет войти сразу после регистрации).
+ */
+async function testPublicSignup() {
+  console.log("\n0. Регистрация через форму сайта");
+
+  const email = `e2e-signup-${stamp}@example.com`;
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+    method: "POST",
+    headers: { apikey: ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: PASSWORD }),
+  });
+  const body = await res.text();
+
+  if (res.status >= 500) {
+    bad(
+      "посетитель не может зарегистрироваться: сервер вернул ошибку",
+      `HTTP ${res.status} ${body.slice(0, 160)}. Обычно это неработающая отправка писем (SMTP) на сервере.`,
+    );
+    return;
+  }
+
+  if (!res.ok) {
+    bad("регистрация отклонена", `HTTP ${res.status}: ${body.slice(0, 160)}`);
+    return;
+  }
+
+  let created = null;
+  try {
+    created = JSON.parse(body);
+  } catch {
+    bad("ответ регистрации не является JSON", body.slice(0, 160));
+    return;
+  }
+
+  // Убираем за собой, чтобы тест ничего не оставлял в базе.
+  const userId = created?.user?.id || created?.id;
+  if (userId) {
+    await deleteUser(userId);
+  }
+
+  ok("регистрация через форму работает");
+
+  const settingsRes = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+    headers: authHeaders(ANON_KEY),
+  });
+  const settings = settingsRes.ok ? await settingsRes.json() : null;
+  const autoconfirm = settings?.mailer_autoconfirm === true;
+
+  if (autoconfirm) {
+    check(
+      Boolean(created.session),
+      "новый пользователь сразу получает сессию и попадает на страницу покупок",
+      "сессии в ответе нет, хотя подтверждение выключено — вход будет невозможен",
+    );
+  } else {
+    console.log("   (подтверждение по почте включено — нужна рабочая отправка писем)");
+    console.log("        без SMTP новый пользователь не сможет подтвердить адрес и войти.");
+  }
+}
+
 /** 1. Страница покупок закрыта. */
 async function testGate() {
   console.log("\n1. Доступ к странице покупок");
@@ -643,6 +718,30 @@ console.log("=== СКВОЗНОЙ ТЕСТ ОПЛАТЫ ===");
 console.log(`Приложение: ${APP_URL}`);
 console.log("Создаю тестовых пользователей…");
 
+/**
+ * Предварительная проверка: сайт вообще запущен?
+ *
+ * Без неё тест падал бы стектрейсом с ECONNREFUSED на середине прогона,
+ * и непонятно было бы — это ошибка сайта или просто он не запущен.
+ */
+async function requireRunningApp() {
+  try {
+    const res = await fetch(`${APP_URL}/api/health`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      console.error(`\nСайт на ${APP_URL} отвечает HTTP ${res.status}. Запущен ли он правильно?`);
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error(`\nСайт на ${APP_URL} недоступен: ${error.cause?.code || error.message}`);
+    console.error("Запустите его и повторите: npm run build && npm start");
+    process.exit(1);
+  }
+}
+
+await requireRunningApp();
+
 const buyer = await createUser(BUYER_EMAIL);
 const intruder = await createUser(INTRUDER_EMAIL);
 
@@ -655,6 +754,8 @@ try {
   buyerCookie = buildAuthCookie(buyerSession);
   intruderCookie = buildAuthCookie(intruderSession);
   ok("тестовые пользователи созданы и вошли");
+
+  await testPublicSignup();
 
   await testGate();
 

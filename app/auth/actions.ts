@@ -43,6 +43,39 @@ export async function login(formData: FormData) {
   redirect(next);
 }
 
+/**
+ * Переводит технический текст ошибки Supabase на понятный человеку.
+ *
+ * ЗАЧЕМ: Supabase отдаёт английские сообщения, часть из которых вообще
+ * ничего не значит для покупателя. Например, «Error sending confirmation
+ * email» — это не вина пользователя, а неработающая отправка писем на
+ * сервере. Показывать это как есть — значит пугать посетителя чужой
+ * ошибкой вместо помощи.
+ */
+function humanSignupError(message: string): string {
+  const text = message.toLowerCase();
+
+  if (text.includes("sending confirmation email")) {
+    return "Сейчас не удаётся отправить письмо для подтверждения — почта на сервере временно не настроена. Попробуйте зарегистрироваться чуть позже или напишите нам.";
+  }
+  if (text.includes("email rate limit") || text.includes("rate limit")) {
+    return "Слишком много попыток регистрации с одного адреса. Подождите несколько минут и попробуйте снова.";
+  }
+  if (text.includes("already registered") || text.includes("already been registered")) {
+    return "Аккаунт с такой почтой уже есть. Попробуйте войти.";
+  }
+  if (text.includes("password should be") || text.includes("at least")) {
+    return "Пароль слишком короткий — нужно минимум 6 символов.";
+  }
+  if (text.includes("unable to validate email") || text.includes("invalid email")) {
+    return "Такой адрес почты не похож на настоящий. Проверьте его.";
+  }
+
+  // На всякий случай сохраняем введённый адрес в форме, чтобы человеку
+  // не пришлось вводить его заново после ошибки.
+  return `Не удалось создать аккаунт: ${message}`;
+}
+
 export async function signup(formData: FormData) {
   const supabase = await createClient();
 
@@ -59,7 +92,10 @@ export async function signup(formData: FormData) {
   });
 
   if (error) {
-    const params = new URLSearchParams({ error: error.message, email });
+    const params = new URLSearchParams({
+      error: humanSignupError(error.message),
+      email,
+    });
     redirect(`/login?${params.toString()}`);
   }
 
