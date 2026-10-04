@@ -110,6 +110,15 @@ const BUYER_EMAIL = `e2e-buyer-${stamp}@example.com`;
 const INTRUDER_EMAIL = `e2e-other-${stamp}@example.com`;
 const PASSWORD = `Test-${stamp}-Aa1!`;
 
+/**
+ * Домен для адреса, который проверяется через публичную регистрацию.
+ * Остальные тестовые пользователи создаются через админский API с
+ * email_confirm, им почта не отправляется, поэтому example.com для них
+ * безопасен. Здесь домен имеет значение: при включённом подтверждении
+ * сервер реально шлёт письмо на этот адрес.
+ */
+const MAIL_DOMAIN = process.env.E2E_MAIL_DOMAIN || "example.com";
+
 /** Создаёт подтверждённого пользователя через админский API. */
 async function createUser(email) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
@@ -185,15 +194,23 @@ async function deleteUser(userId) {
  * проверок, а зарегистрироваться невозможно. Этот шаг закрывает именно
  * эту дыру в тестах.
  *
- * Что считаем провалом:
- *   - ответ 5xx (например «Error sending confirmation email»);
- *   - отсутствие сессии, если подтверждение по почте выключено
- *     (значит человек не сможет войти сразу после регистрации).
+ * ПРО ДОМЕН ТЕСТОВЫХ АДРЕСОВ:
+ * с включённым подтверждением по почте сервер пытается отправить письмо на
+ * адрес регистрации. example.com — зарезервированный домен для документации,
+ * почта туда не принимается, и почтовые серверы (проверено на Яндексе) отвечают
+ * `554 5.7.1 Message rejected under suspicion of SPAM`. Это не поломка сайта.
+ * Поэтому:
+ *   - на example.com успешную отправку проверить нельзя — молча уходим с
+ *     пометкой, и это НЕ провал;
+ *   - чтобы проверка стала настоящей, задайте E2E_MAIL_DOMAIN на свой домен
+ *     (тогда любая ошибка отправки уже считается провалом).
  */
 async function testPublicSignup() {
   console.log("\n0. Регистрация через форму сайта");
 
-  const email = `e2e-signup-${stamp}@example.com`;
+  const mailDomain = MAIL_DOMAIN;
+  const isPlaceholderDomain = /(^|\.)example\.(com|org|net)$/i.test(mailDomain);
+  const email = `e2e-signup-${stamp}@${mailDomain}`;
 
   const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
     method: "POST",
@@ -203,6 +220,19 @@ async function testPublicSignup() {
   const body = await res.text();
 
   if (res.status >= 500) {
+    // Пользователь при сбое отправки откатывается, поэтому «успешной»
+    // регистрации на непринимающем домене быть не может. Проверяем, что
+    // упало именно письмо, а не что-то другое: иначе настоящая поломка
+    // (например, ошибка базы) спряталась бы за этим пропуском.
+    const isMailFailure = /Error sending confirmation email/i.test(body);
+    if (isPlaceholderDomain) {
+      check(
+        isMailFailure,
+        `регистрация доходит до отправки письма (@${mailDomain} почта не принимается — это ожидаемо)`,
+        `HTTP ${res.status}: ${body.slice(0, 160)} — это не ошибка отправки письма, значит сломано что-то другое`,
+      );
+      return;
+    }
     bad(
       "посетитель не может зарегистрироваться: сервер вернул ошибку",
       `HTTP ${res.status} ${body.slice(0, 160)}. Обычно это неработающая отправка писем (SMTP) на сервере.`,
@@ -247,8 +277,18 @@ async function testPublicSignup() {
       "сессии в ответе нет, хотя подтверждение выключено — вход будет невозможен",
     );
   } else {
-    console.log("   (подтверждение по почте включено — нужна рабочая отправка писем)");
-    console.log("        без SMTP новый пользователь не сможет подтвердить адрес и войти.");
+    // Подтверждение по почте включено: пользователь должен появиться
+    // неподтверждённым и без сессии — вход только после клика по ссылке.
+    const unconfirmed = !created.user?.email_confirmed_at;
+    const noSession = !created.access_token;
+    check(
+      unconfirmed && noSession,
+      "новый пользователь ждёт подтверждения по письму и не входит сразу",
+      `email_confirmed_at=${created.user?.email_confirmed_at ?? "null"}, сессия=${noSession ? "нет" : "есть"} — ведёт себя не как при подтверждении почты`,
+    );
+    if (isPlaceholderDomain) {
+      console.log(`   (сам факт доставки письма на @${mailDomain} проверить нельзя — адрес непринимающий)`);
+    }
   }
 }
 
