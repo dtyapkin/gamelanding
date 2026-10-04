@@ -308,6 +308,49 @@ async function testResendForm() {
   console.log("   (скрыта: подтверждение по почте отключено, проверять нечего)");
 }
 
+/**
+ * Какая вкладка открывается на странице входа.
+ *
+ * Смысл проверки. Новая покупатель приходит с лендинга без параметра next
+ * и не имеет пароля — ему нужна регистрация. А человек, которого выбросило
+ * с /download, приходит с next=%2Fdownload и хочет войти. Если показывать
+ * не ту вкладку, путь к покупке ломается: новый покупатель вводит пароль,
+ * которого у него нет, и получает «Неверный email или пароль».
+ *
+ * Проверяем на реальном HTML, а не на вызовах функции: интересует, что
+ * видит человек в браузере после сборки.
+ */
+async function testDefaultTab() {
+  console.log("\n0c. Вкладка по умолчанию на странице входа");
+
+  // Новый покупатель: ссылки с лендинга, параметра next нет.
+  const fresh = await fetch(`${APP_URL}/login`);
+  const freshHtml = fresh.ok ? await fresh.text() : "";
+  check(
+    fresh.ok && freshHtml.includes("Зарегистрироваться") && !freshHtml.includes(">Вход<"),
+    "без next открывается регистрация — её видит новый покупатель",
+    fresh.ok ? "открыт вход" : `страница вернула HTTP ${fresh.status}`,
+  );
+
+  // Вернулись за покупками: requireUser прислал next.
+  const back = await fetch(`${APP_URL}/login?next=%2Fdownload`);
+  const backHtml = back.ok ? await back.text() : "";
+  check(
+    back.ok && backHtml.includes(">Вход<") && !backHtml.includes(">Регистрация<"),
+    "с next открывается вход — его хочет покупатель с прошлым заказом",
+    back.ok ? "открыта регистрация" : `страница вернула HTTP ${back.status}`,
+  );
+
+  // После ошибки регистрации человек должен увидеть регистрацию снова.
+  const afterError = await fetch(`${APP_URL}/login?tab=signup&error=...`);
+  const errHtml = afterError.ok ? await afterError.text() : "";
+  check(
+    afterError.ok && errHtml.includes("Зарегистрироваться"),
+    "после ошибки регистрации открыта регистрация, а не вход",
+    afterError.ok ? "открыт вход" : `страница вернула HTTP ${afterError.status}`,
+  );
+}
+
 /** 1. Страница покупок закрыта. */
 async function testGate() {
   console.log("\n1. Доступ к странице покупок");
@@ -817,6 +860,8 @@ try {
   await testPublicSignup();
 
   await testResendForm();
+
+  await testDefaultTab();
 
   await testGate();
 

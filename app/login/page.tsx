@@ -38,6 +38,11 @@ export default async function LoginPage({
   const message = firstValue(params.message);
   const email = firstValue(params.email) ?? "";
   const next = firstValue(params.next);
+  // Какую вкладку открыть. Серверные действия передают tab явно:
+  // после ошибки регистрации человек должен увидеть регистрацию снова,
+  // после «создано, подтвердите почту» — вход. Если tab не передан,
+  // вкладку выбирает форма по наличию next (см. defaultTab).
+  const tab = firstValue(params.tab);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4">
@@ -47,6 +52,7 @@ export default async function LoginPage({
           initialMessage={message}
           initialEmail={email}
           nextPath={next}
+          initialTab={tab}
         />
       </div>
     </div>

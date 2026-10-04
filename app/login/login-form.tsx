@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { login, signup } from "@/app/auth/actions";
 import BuyButton from "@/components/BuyButton";
+import { resolveTab } from "@/lib/login-tab";
 
 /**
  * Клиентская часть формы входа/регистрации.
@@ -10,6 +11,10 @@ import BuyButton from "@/components/BuyButton";
  * Вынесена отдельно от page.tsx, потому что здесь нужен useState
  * (переключение «Вход» ↔ «Регистрация»). Сам параметры адреса читает
  * серверный компонент и передаёт их сюда готовыми.
+ *
+ * Какая вкладка открыта первой, решает resolveTab() в lib/login-tab.ts —
+ * там же объяснение, почему «по умолчанию регистрация» не означает
+ * «всегда регистрация».
  */
 
 export default function LoginForm({
@@ -17,13 +22,15 @@ export default function LoginForm({
   initialMessage,
   initialEmail,
   nextPath,
+  initialTab,
 }: {
   initialError: string | null;
   initialMessage: string | null;
   initialEmail: string;
   nextPath: string | null;
+  initialTab?: string | null;
 }) {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(resolveTab(initialTab, nextPath !== null) === "login");
 
   return (
     <>

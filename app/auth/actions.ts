@@ -35,7 +35,9 @@ export async function login(formData: FormData) {
 
   if (error) {
     // Не говорим пользователю, существует ли такой email (user enumeration).
-    const params = new URLSearchParams({ error: "Неверный email или пароль", email });
+    // Вкладка входа: человек уже пробовал войти, и после ошибки ожидает
+    // увидеть ту же форму, а не регистрацию.
+    const params = new URLSearchParams({ error: "Неверный email или пароль", email, tab: "login" });
     redirect(`/login?${params.toString()}`);
   }
 
@@ -102,6 +104,10 @@ export async function signup(formData: FormData) {
     const params = new URLSearchParams({
       error: humanSignupError(error.message),
       email,
+      // Возвращаем человека на вкладку регистрации: он только что
+      // регистрировался, и ждать пароля ещё не от чего. Без этого
+      // параметра форма откроет вход — и человек подумает, что зарегистрировался.
+      tab: "signup",
     });
     redirect(`/login?${params.toString()}`);
   }
@@ -112,11 +118,14 @@ export async function signup(formData: FormData) {
     redirect(safeNext(formData, "/download"));
   }
 
+  // Подтверждение по почте включено: аккаунт создан, но войти ещё нельзя.
+  // Отправляем на вкладку входа — вводить пароль, который человек уже знает.
   redirect(
     "/login?" +
       new URLSearchParams({
         message: "Аккаунт создан. Проверьте почту и перейдите по ссылке из письма.",
         email,
+        tab: "login",
       }).toString(),
   );
 }
