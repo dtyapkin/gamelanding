@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { login, signup, resendConfirmation } from "@/app/auth/actions";
+import { login, signup } from "@/app/auth/actions";
 import BuyButton from "@/components/BuyButton";
 
 /**
@@ -104,9 +104,14 @@ export default function LoginForm({
         {isLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
       </button>
 
-      {/* Письмо с подтверждением может не дойти: попасть в «Спам», или его
-          отклонит почтовый сервер получателя. Без повторной отправки человек
-          оказывается заперт — войти нельзя, пароля ещё нет. */}
+      {/* Блок повторной отправки письма с подтверждением.
+          Сейчас скрыт: подтверждение по почте отключено
+          (ENABLE_EMAIL_AUTOCONFIRM=true), письма не приходят, и форма
+          тут просто вводит в заблуждение. Вернём вместе с нормальным
+          почтовым провайдером — до этого места уже доведено, логика
+          в app/auth/actions.ts (resendConfirmation) и
+          lib/email-resend-limit.ts остаётся нетронутой.
+
       <div className="mt-6 pt-6 border-t border-border">
         <p className="text-sm text-gray-400 mb-3">
           Не получили письмо с подтверждением?
@@ -131,6 +136,7 @@ export default function LoginForm({
           Не чаще одного раза в 3 минуты на один адрес.
         </p>
       </div>
+      */}
     </>
   );
 }
