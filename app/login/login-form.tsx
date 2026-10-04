@@ -108,7 +108,7 @@ export default function LoginForm({
       <button
         type="button"
         onClick={() => setIsLogin((value) => !value)}
-        className="mt-4 w-full text-center text-1xl text-accent-purple hover:text-purple-300 transition-colors"
+        className="mt-4 w-full text-center text-1xl text-purple-400 hover:text-purple-300 transition-colors"
       >
         {isLogin
           ? "Нет аккаунта? Зарегистрироваться"
