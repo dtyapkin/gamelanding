@@ -62,6 +62,12 @@ function humanSignupError(message: string): string {
   if (text.includes("email rate limit") || text.includes("rate limit")) {
     return "Слишком много попыток регистрации с одного адреса. Подождите несколько минут и попробуйте снова.";
   }
+  // Реальная формулировка GoTrue при частых отправках. Раньше она проваливалась
+  // в общий случай, и человек видел английский текст вроде
+  // «For security purposes, you can only request this after 59 seconds».
+  if (text.includes("only request this after") || text.includes("too many emails")) {
+    return "Письмо уже отправлено недавно. Подождите минуту и попробуйте ещё раз — так защищаемся от почтового спама.";
+  }
   if (text.includes("already registered") || text.includes("already been registered")) {
     return "Аккаунт с такой почтой уже есть. Попробуйте войти.";
   }
