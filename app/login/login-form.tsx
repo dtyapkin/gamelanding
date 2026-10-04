@@ -30,7 +30,9 @@ export default function LoginForm({
   nextPath: string | null;
   initialTab?: string | null;
 }) {
-  const [isLogin, setIsLogin] = useState(resolveTab(initialTab, nextPath !== null) === "login");
+  const [isLogin, setIsLogin] = useState(
+    resolveTab(initialTab, nextPath !== null) === "login",
+  );
 
   return (
     <>
@@ -106,9 +108,11 @@ export default function LoginForm({
       <button
         type="button"
         onClick={() => setIsLogin((value) => !value)}
-        className="mt-4 w-full text-center text-sm text-accent-purple hover:text-purple-300 transition-colors"
+        className="mt-4 w-full text-center text-1xl text-accent-purple hover:text-purple-300 transition-colors"
       >
-        {isLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
+        {isLogin
+          ? "Нет аккаунта? Зарегистрироваться"
+          : "Уже есть аккаунт? Войти"}
       </button>
 
       {/* Блок повторной отправки письма с подтверждением.
@@ -167,7 +171,10 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium text-gray-300 mb-1"
+      >
         {label}
       </label>
       <input
