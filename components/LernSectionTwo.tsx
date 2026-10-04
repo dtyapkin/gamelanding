@@ -4,26 +4,26 @@ export default function LearnSectionTwo() {
       title: "Большой объём аудитории",
       desc: "Игровой контент понятен пользователям практически любого возраста.",
       badge: "1 МЛН₽",
-      image: "/r-6.jpg",
+      image: "/f-6.jpg",
     },
     {
       title: "Новые игры постоянно",
       desc: "Каталог можно регулярно обновлять и расширять.",
       badge: null,
-      image: "/r-7.jpg",
+      image: "/f-7.jpg",
     },
 
     {
       title: "Взаимодействие с сайтом",
       desc: "Это не обычная информационная страница, которую человек быстро закрывает.",
       badge: "ЗАБЕРИ МОИ ДЕНЬГИ УЖЕ",
-      image: "/r-8.jpg",
+      image: "/f-8.jpg",
     },
     {
       title: "Развитие проекта",
       desc: "Начать с небольшой витрины, а затем добавлять категории, SEO-страницы, контент и рекламные места.",
       badge: null,
-      image: "/r-9.jpg",
+      image: "/f-9.jpg",
     },
   ];
 
@@ -47,7 +47,7 @@ export default function LearnSectionTwo() {
                 <img
                   src={card.image}
                   alt="Entrepreneur"
-                  className="relative  h-5xl w-5xl object-cover mix-blend-normal"
+                  className="relative  h-5xl w-5xl content-center object-cover object-top mix-blend-normal"
                 />
                 {/* {card.badge && (
                   <div
