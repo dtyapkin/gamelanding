@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeInternalPath } from "@/lib/dal";
+import { reserveConfirmationResend } from "@/lib/email-resend-limit";
 
 /**
  * Вход, регистрация и выход.
@@ -113,9 +114,84 @@ export async function signup(formData: FormData) {
       }).toString(),
   );
 }
-
 export async function logout() {
   const supabase = await createClient();
+
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+/**
+ * Повторная отправка письма подтверждения адреса.
+ *
+ * ЗАЧЕМ ЭТО НУЖНО. С подтверждением по почте человек оказывается заперт,
+ * если письмо не дошло: войти нельзя (Supabase отвечает «Email not
+ * confirmed»), зарегистрироваться заново нельзя (адрес уже занят), пароль
+ * сбросить нельзя (его ещё нет). Без этой кнопки единственный выход был бы
+ * один — мы правим аккаунт вручную через админку.
+ *
+ * Ограничение частоты живёт в lib/email-resend-limit.ts.
+ */
+export async function resendConfirmation(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email || !email.includes("@")) {
+    redirect(
+      `/login?${new URLSearchParams({
+        error: "Введите адрес почты, на который отправлялось письмо.",
+      }).toString()}`,
+    );
+  }
+
+  const decision = reserveConfirmationResend(email);
+
+  if (!decision.allowed) {
+    const minutes = Math.max(1, Math.ceil(decision.retryAfterSeconds / 60));
+    redirect(
+      `/login?${new URLSearchParams({
+        error: `Письмо уже отправлялось недавно. Попробуйте ещё раз через ${minutes} ${
+          minutes === 1 ? "минуту" : "минуты"
+        } — так защищаемся от почтового спама.`,
+        email,
+      }).toString()}`,
+    );
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/login`,
+    },
+  });
+
+  if (error) {
+    // Про «такого адреса нет» сообщаем так же, как об успехе: иначе форма
+    // превращается в способ проверить, какие адреса зарегистрированы на
+    // сайте. А вот о поломке отправки говорим прямо — это наша ошибка,
+    // и человек должен знать, что помочь письмом сейчас не получится.
+    const isUnknownAddress =
+      error.message.toLowerCase().includes("not found") ||
+      error.message.toLowerCase().includes("unable to validate");
+
+    if (!isUnknownAddress) {
+      console.error("Не удалось отправить письмо повторно:", error.message);
+      redirect(
+        `/login?${new URLSearchParams({
+          error: humanSignupError(error.message),
+          email,
+        }).toString()}`,
+      );
+    }
+  }
+
+  redirect(
+    `/login?${new URLSearchParams({
+      message:
+        "Если такой адрес зарегистрирован и ещё не подтверждён — мы отправили письмо повторно. Проверьте также папку «Спам».",
+      email,
+    }).toString()}`,
+  );
 }

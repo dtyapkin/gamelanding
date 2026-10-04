@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { login, signup } from "@/app/auth/actions";
+import { login, signup, resendConfirmation } from "@/app/auth/actions";
 import BuyButton from "@/components/BuyButton";
 
 /**
@@ -103,6 +103,34 @@ export default function LoginForm({
       >
         {isLogin ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
       </button>
+
+      {/* Письмо с подтверждением может не дойти: попасть в «Спам», или его
+          отклонит почтовый сервер получателя. Без повторной отправки человек
+          оказывается заперт — войти нельзя, пароля ещё нет. */}
+      <div className="mt-6 pt-6 border-t border-border">
+        <p className="text-sm text-gray-400 mb-3">
+          Не получили письмо с подтверждением?
+        </p>
+        <form action={resendConfirmation} className="space-y-3">
+          <Field
+            id="resend-email"
+            label="Email"
+            type="email"
+            name="email"
+            autoComplete="email"
+            defaultValue={initialEmail}
+          />
+          <button
+            type="submit"
+            className="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-gray-200 hover:border-accent-purple hover:text-white transition-colors"
+          >
+            Отправить письмо ещё раз
+          </button>
+        </form>
+        <p className="mt-2 text-xs text-gray-500">
+          Не чаще одного раза в 3 минуты на один адрес.
+        </p>
+      </div>
     </>
   );
 }
