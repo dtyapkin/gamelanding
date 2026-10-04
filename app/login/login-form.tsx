@@ -100,7 +100,7 @@ export default function LoginForm({
           />
 
           <BuyButton variant="solid" pendingText="Создаём аккаунт…">
-            Зарегистрироваться
+            Регистрация
           </BuyButton>
         </form>
       )}
