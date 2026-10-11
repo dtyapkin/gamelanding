@@ -12,9 +12,9 @@ import { resolveTab } from "@/lib/login-tab";
  * (переключение «Вход» ↔ «Регистрация»). Сам параметры адреса читает
  * серверный компонент и передаёт их сюда готовыми.
  *
- * Какая вкладка открыта первой, решает resolveTab() в lib/login-tab.ts —
- * там же объяснение, почему «по умолчанию регистрация» не означает
- * «всегда регистрация».
+ * Какая вкладка открыта первой, решает resolveTab() в lib/login-tab.ts:
+ * по умолчанию регистрация, а вход — только когда вызывающий код явно
+ * об этом попросил (например, охрана /download для вернувшегося покупателя).
  */
 
 export default function LoginForm({
@@ -30,9 +30,10 @@ export default function LoginForm({
   nextPath: string | null;
   initialTab?: string | null;
 }) {
-  const [isLogin, setIsLogin] = useState(
-    resolveTab(initialTab, nextPath !== null) === "login",
-  );
+  // Вкладку выбирает вызывающий (lib/login-tab.ts). nextPath здесь только
+  // адрес возврата после входа и на выбор вкладки больше не влияет: и
+  // новый покупатель, и вернувшийся приходят с next=/download.
+  const [isLogin, setIsLogin] = useState(resolveTab(initialTab) === "login");
 
   return (
     <>

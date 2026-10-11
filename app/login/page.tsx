@@ -38,10 +38,10 @@ export default async function LoginPage({
   const message = firstValue(params.message);
   const email = firstValue(params.email) ?? "";
   const next = firstValue(params.next);
-  // Какую вкладку открыть. Серверные действия передают tab явно:
-  // после ошибки регистрации человек должен увидеть регистрацию снова,
-  // после «создано, подтвердите почту» — вход. Если tab не передан,
-  // вкладку выбирает форма по наличию next (см. defaultTab).
+  // Какую вкладку открыть. Вызывающий код передаёт tab явно, потому что
+  // по адресу это не понять: и новый покупатель с «Купить», и вернувшийся
+  // покупатель со сломанной сессией приходят с next=/download. Если tab не
+  // передан, форма открывает регистрацию (см. resolveTab в lib/login-tab.ts).
   const tab = firstValue(params.tab);
 
   return (

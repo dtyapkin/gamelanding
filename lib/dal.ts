@@ -4,6 +4,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import type { LoginTab } from "@/lib/login-tab";
 
 /**
  * СЛОЙ ДОСТУПА К ДАННЫМ (Data Access Layer).
@@ -44,21 +45,33 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
  * отправляем его на /login и просим вернуться обратно.
  *
  * @param nextRelativePath куда вернуться после входа (начинается со "/")
+ * @param preferredTab какую вкладку открыть на /login. Обязателен к выбору
+ *        вызывающим кодом, потому что по одному только next нельзя понять,
+ *        кто пришёл: и новый покупатель с кнопки «Купить», и вернувшийся
+ *        покупатель со сломавшейся сессией попадают на /login?next=/download.
+ *        Разница в намерении: новый покупатель регистрируется, вернувшийся —
+ *        входит. См. lib/login-tab.ts.
  */
-export async function requireUser(nextRelativePath = "/"): Promise<User> {
+export async function requireUser(
+  nextRelativePath = "/",
+  preferredTab: LoginTab = "signup",
+): Promise<User> {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect(buildLoginUrl(nextRelativePath));
+    redirect(buildLoginUrl(nextRelativePath, preferredTab));
   }
 
   return user;
 }
 
 /** Собирает безопасный URL для входа. */
-export function buildLoginUrl(nextRelativePath: string): string {
+export function buildLoginUrl(
+  nextRelativePath: string,
+  preferredTab: LoginTab,
+): string {
   const safe = isSafeInternalPath(nextRelativePath) ? nextRelativePath : "/";
-  return `/login?next=${encodeURIComponent(safe)}`;
+  return `/login?next=${encodeURIComponent(safe)}&tab=${preferredTab}`;
 }
 
 /**

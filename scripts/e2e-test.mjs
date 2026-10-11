@@ -311,33 +311,47 @@ async function testResendForm() {
 /**
  * Какая вкладка открывается на странице входа.
  *
- * Смысл проверки. Новая покупатель приходит с лендинга без параметра next
- * и не имеет пароля — ему нужна регистрация. А человек, которого выбросило
- * с /download, приходит с next=%2Fdownload и хочет войти. Если показывать
- * не ту вкладку, путь к покупке ломается: новый покупатель вводит пароль,
- * которого у него нет, и получает «Неверный email или пароль».
+ * Смысл проверки. Новый покупатель жмёт «Купить» и попадает на /login.
+ * Аккаунта у него ещё нет и пароля тоже — если показать вход, он введёт
+ * несуществующий пароль и получит «Неверный email или пароль», то есть
+ * путь к покупке сломан. Вход нужен только тому, кто возвращается за уже
+ * купленным и у кого истекла сессия.
  *
- * Проверяем на реальном HTML, а не на вызовах функции: интересует, что
- * видит человек в браузере после сборки.
+ * Параметр next для этого не годится: оба покупателя приходят с
+ * next=/download. Различить их можно только в момент редиректа, поэтому
+ * вкладку передают явным tab (signup — из кнопки «Купить», login — из
+ * охраны /download). Проверяем на реальном HTML, что видит человек.
  */
 async function testDefaultTab() {
   console.log("\n0c. Вкладка по умолчанию на странице входа");
 
-  // Новый покупатель: ссылки с лендинга, параметра next нет.
+  const isSignup = (html) => html.includes(">Регистрация<") && !html.includes(">Вход<");
+  const isLogin = (html) => html.includes(">Вход<") && !html.includes(">Регистрация<");
+
+  // По умолчанию (прямая ссылка на /login) — регистрация.
   const fresh = await fetch(`${APP_URL}/login`);
   const freshHtml = fresh.ok ? await fresh.text() : "";
   check(
-    fresh.ok && freshHtml.includes("Зарегистрироваться") && !freshHtml.includes(">Вход<"),
-    "без next открывается регистрация — её видит новый покупатель",
-    fresh.ok ? "открыт вход" : `страница вернула HTTP ${fresh.status}`,
+    fresh.ok && isSignup(freshHtml),
+    "без параметров открывается регистрация — её видит новый покупатель",
+    fresh.ok ? "открыт не тот экран" : `страница вернула HTTP ${fresh.status}`,
   );
 
-  // Вернулись за покупками: requireUser прислал next.
-  const back = await fetch(`${APP_URL}/login?next=%2Fdownload`);
+  // Новый покупатель с кнопки «Купить»: next есть, но вкладка — регистрация.
+  const buy = await fetch(`${APP_URL}/login?next=%2Fdownload&tab=signup`);
+  const buyHtml = buy.ok ? await buy.text() : "";
+  check(
+    buy.ok && isSignup(buyHtml),
+    "с кнопки «Купить» (next + tab=signup) открывается регистрация",
+    buy.ok ? "открыт вход — путь к покупке сломан" : `страница вернула HTTP ${buy.status}`,
+  );
+
+  // Вернувшийся покупатель: сессия истекла, но аккаунт есть — вход.
+  const back = await fetch(`${APP_URL}/login?next=%2Fdownload&tab=login`);
   const backHtml = back.ok ? await back.text() : "";
   check(
-    back.ok && backHtml.includes(">Вход<") && !backHtml.includes(">Регистрация<"),
-    "с next открывается вход — его хочет покупатель с прошлым заказом",
+    back.ok && isLogin(backHtml),
+    "вернувшемуся за покупками (tab=login) открывается вход",
     back.ok ? "открыта регистрация" : `страница вернула HTTP ${back.status}`,
   );
 
@@ -345,7 +359,7 @@ async function testDefaultTab() {
   const afterError = await fetch(`${APP_URL}/login?tab=signup&error=...`);
   const errHtml = afterError.ok ? await afterError.text() : "";
   check(
-    afterError.ok && errHtml.includes("Зарегистрироваться"),
+    afterError.ok && isSignup(errHtml),
     "после ошибки регистрации открыта регистрация, а не вход",
     afterError.ok ? "открыт вход" : `страница вернула HTTP ${afterError.status}`,
   );
@@ -364,6 +378,11 @@ async function testGate() {
 
   const loc = anonRes.headers.get("location") || "";
   check(loc.includes("/login"), "в перенаправлении есть адрес входа", loc);
+  check(
+    loc.includes("tab=login"),
+    "охрана /download ведёт на вкладку входа — сюда идут за уже купленным",
+    `ожидался tab=login, получено: ${loc}`,
+  );
 
   return null;
 }

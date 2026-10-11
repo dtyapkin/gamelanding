@@ -27,7 +27,12 @@ export async function startCheckout(formData: FormData): Promise<void> {
   // requireUser сам уведёт на /login с параметром next=...,
   // если пользователь ещё не вошёл. Код дальше выполнится
   // только для авторизованного пользователя.
-  const user = await requireUser("/download");
+  //
+  // Вкладка «регистрация»: на кнопку «Купить» чаще всего жмёт человек,
+  // у которого аккаунта ещё нет. Показать ему вход — заставить вводить
+  // пароль, которого у него нет. Тот, кто уже покупал, переключится на
+  // вход одним кликом (там тот же next, ничего не потеряется).
+  const user = await requireUser("/download", "signup");
 
   const product = getProduct(productId);
   if (!product) {

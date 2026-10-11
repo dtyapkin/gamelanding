@@ -57,7 +57,7 @@ function firstValue(value: string | string[] | undefined): string | null {
  * ручной проверки он вообще никак не смог бы получить оплаченный файл.
  */
 async function recheckOrdersAction(): Promise<void> {
-  const user = await requireUser("/download");
+  const user = await requireUser("/download", "login");
   const pending = await getPendingOrdersForUser(user.id);
 
   for (const order of pending) {
@@ -72,7 +72,10 @@ export default async function DownloadPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const user = await requireUser("/download");
+  // Вкладка «вход»: сюда приходят за уже купленным, то есть аккаунт у
+  // человека скорее всего есть, а сессия просто истекла. Показывать ему
+  // регистрацию — предлагать создать второй аккаунт на тот же email.
+  const user = await requireUser("/download", "login");
   const params = await searchParams;
 
   const errorCode = firstValue(params.error);

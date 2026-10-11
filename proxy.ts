@@ -74,12 +74,26 @@ export async function proxy(request: NextRequest) {
   );
 
   if (isProtected && !isAuthenticated) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
-    return NextResponse.redirect(loginUrl);
+    return redirectToLogin(request);
   }
 
   return response;
+}
+
+/**
+ * Строит переход на /login для закрытых адресов.
+ *
+ * Вкладка ВСЕГДА «вход»: сюда попадают только за уже существующим
+ * (свои покупки, свои заказы), значит аккаунт у человека, скорее всего,
+ * есть, а сессия просто истекла. Новый покупатель на эту ветку не
+ * попадает — кнопка «Купить» ведёт через Server Action (startCheckout)
+ * на главной, а не на закрытый адрес, и там вкладка выбирается отдельно.
+ */
+function redirectToLogin(request: NextRequest) {
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+  loginUrl.searchParams.set("tab", "login");
+  return NextResponse.redirect(loginUrl);
 }
 
 function redirectIfUnauthenticated(request: NextRequest) {
@@ -89,9 +103,7 @@ function redirectIfUnauthenticated(request: NextRequest) {
 
   if (!isProtected) return NextResponse.next();
 
-  const loginUrl = new URL("/login", request.url);
-  loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
-  return NextResponse.redirect(loginUrl);
+  return redirectToLogin(request);
 }
 
 export const config = {
