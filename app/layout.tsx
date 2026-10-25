@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import {
+  YandexMetricaProvider,
+  standardYMInitParameters,
+} from "@artginzburg/next-ym";
 
 export const metadata: Metadata = {
   title: "Игровая витрина для заработка на рекламе | GameOnline",
@@ -24,7 +28,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" className="scroll-smooth">
-      <body className="antialiased min-h-screen flex flex-col">{children}</body>
+      <body className="antialiased min-h-screen flex flex-col">
+        <YandexMetricaProvider initParameters={standardYMInitParameters}>
+          {children}
+        </YandexMetricaProvider>
+      </body>
     </html>
   );
 }
